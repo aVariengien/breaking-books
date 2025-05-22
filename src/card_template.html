@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        @page {
+            size: A5 landscape;
+            margin: 0;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Merriweather:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4; /* Light grey background for contrast */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Ensure body takes full viewport height for centering */
+        }
+
+        .card {
+            width: 210mm;
+            height: 148mm;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column; /* Main layout is vertical */
+            overflow: hidden; /* Ensures content respects card boundaries */
+            border-radius: 8px;
+        }
+
+        .card-header {
+            padding: 20px;
+            background-color: #4A90E2; /* A nice blue for the header */
+            color: white;
+            text-align: center;
+            flex-shrink: 0; /* Prevent the header from shrinking */
+        }
+
+        .card-header h1 {
+            font-family: 'Merriweather', serif;
+            font-size: 28px; /* Slightly larger title */
+            margin: 0 0 10px 0;
+        }
+
+        .card-header p {
+            font-size: 18px; /* Increased from 14px */
+            margin: 5px 0 0 0; /* Added top margin, kept other margins 0 */
+            font-style: italic;
+            color: #FFFFFF; /* Changed from #e0e0e0 for better contrast */
+        }
+
+        .card-image-section {
+            width: 100%; /* Take full width of the card */
+            max-height: 35%; /* Limit image height to a percentage of card */
+            padding: 10px 20px; /* Add some padding around the image */
+            box-sizing: border-box; /* Include padding in width/height calculation */
+            display: flex; /* For centering the image within this section */
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-image-section img {
+            max-width: 100%;
+            max-height: 100%;
+            height: auto; /* Maintain aspect ratio */
+            border-radius: 4px;
+            object-fit: contain; /* Ensure the whole image is visible, don't crop */
+        }
+
+        .card-quotes-section {
+            flex-grow: 1; /* Allow this section to take all remaining vertical space */
+            padding: 0 20px 20px 20px; /* Top padding handled by image section's bottom padding */
+            overflow-y: auto; /* Scroll if quotes overflow */
+            min-height: 0; /* Crucial for overflow-y: auto to work in a flex column */
+        }
+
+        .card-quotes-section h2 {
+            font-family: 'Merriweather', serif;
+            font-size: 20px;
+            margin-top: 0; /* Remove default margin as padding is on the section */
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 2px solid #4A90E2;
+            padding-bottom: 5px;
+        }
+
+        .card-quotes-section ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .card-quotes-section li {
+            font-size: 14px;
+            margin-bottom: 10px;
+            padding-left: 20px; /* Indent for the bullet */
+            position: relative;
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .card-quotes-section li::before {
+            content: "•"; /* Bullet point */
+            color: #4A90E2; /* Bullet color */
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1.2em; /* Adjust position to align with text */
+            position: absolute;
+            left: 10px; /* Space before bullet */
+        }
+
+        /* For print, ensure the card is the only thing visible and sized correctly */
+        @media print {
+            body {
+                background-color: white;
+                display: block; /* Override flex for printing */
+            }
+            .card {
+                margin: 0;
+                box-shadow: none;
+                width: 210mm;
+                height: 148mm;
+                page-break-after: always; /* Ensure each card is on a new page if printing multiple */
+                border-radius: 0;
+            }
+            .card-quotes-section {
+                /* Consider if overflow-y: visible is still desired for print */
+                /* If content can exceed one page, it might get cut. */
+                /* overflow-y: visible; */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="card-header">
+            <h1>{{ title }}</h1>
+            {% if description %}
+            <p>{{ description }}</p>
+            {% endif %}
+        </div>
+        <div class="card-image-section">
+            {% if image_base64 %}
+            <img src="data:image/png;base64,{{ image_base64 }}" alt="Card image">
+            {% else %}
+            <div style="width:100%; height:100%; background-color:#e0e0e0; display:flex; align-items:center; justify-content:center; border-radius:4px;">
+                <span style="color:#999; font-style:italic;">No image provided</span>
+            </div>
+            {% endif %}
+        </div>
+        <div class="card-quotes-section">
+            {% if quotes and quotes|length > 0 %}
+            <h2>Quotes</h2>
+            <ul>
+                {% for quote in quotes %}
+                <li>{{ quote }}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p style="color:#777; font-style:italic;">No quotes provided.</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

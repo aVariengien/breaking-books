@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <style>
+        @page { size: A5 landscape; margin: 0; }
+        body {
+            margin: 0;
+            padding: 0;
+            background: #fff;
+        }
+        .card {
+            width: 210mm;
+            height: 148mm;
+            box-sizing: border-box;
+            padding: 12mm 10mm 10mm 10mm;
+            font-family: sans-serif;
+            display: block;
+        }
+        .title {
+            font-size: 20pt;
+            font-weight: bold;
+            margin-bottom: 4mm;
+            text-align: center;
+        }
+        .description {
+            font-size: 12pt;
+            margin-bottom: 6mm;
+            text-align: center;
+        }
+        .image {
+            width: 100%;
+            height: 40mm;
+            text-align: center;
+            margin-bottom: 6mm;
+        }
+        .image img {
+            max-height: 100%;
+            max-width: 100%;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+        .quotes {
+            font-size: 11pt;
+            max-height: 50mm;
+            overflow-y: auto;
+            margin-top: 0;
+        }
+        .quotes ul {
+            padding-left: 18px;
+            margin: 0;
+        }
+        .quotes li {
+            margin-bottom: 3mm;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="title">{{ title }}</div>
+        {% if description %}
+        <div class="description">{{ description }}</div>
+        {% endif %}
+        <div class="image">
+            {% if image_base64 %}
+            <img src="data:image/png;base64,{{ image_base64 }}" alt="Card image">
+            {% else %}
+            <span style="color:#aaa; font-style:italic;">No image</span>
+            {% endif %}
+        </div>
+        <div class="quotes">
+            {% if quotes and quotes|length > 0 %}
+            <ul>
+                {% for quote in quotes %}
+                <li>{{ quote }}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <span style="color:#aaa; font-style:italic;">No quotes</span>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
