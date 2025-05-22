@@ -97,6 +97,7 @@ def generate_cards(
             print(f"Processed card {i + 1}: {data.get('title', 'Untitled')}")
 
     print("\nProcessing complete.")
+    return output_dir
 
 
 if __name__ == "__main__":
