@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import markdown
 import typer
 from jinja2 import Environment, FileSystemLoader, Template, select_autoescape
 from typing_extensions import Annotated
@@ -32,6 +33,9 @@ def process_single_card(
 
     html_file_path = output_dir / f"{base_filename}.html"
     pdf_file_path = html_file_path.with_suffix(".pdf")
+
+    # Edit description to convert markdown to html
+    card_data["description"] = markdown.markdown(card_data["description"])
 
     rendered_html = template.render(card_data)
     html_file_path.write_text(rendered_html, encoding="utf-8")
