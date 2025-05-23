@@ -15,6 +15,8 @@ TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 CARD_TEMPLATE_FILENAME = "card_template.html"
 SECTION_TEMPLATE_FILENAME = "section_card_template.html"
 TOC_TEMPLATE_FILENAME = "toc_template.html"
+KEY_PASSAGES_TEMPLATE_FILENAME = "key_passages_template.html"
+
 
 app = typer.Typer(help="CLI tool to generate PDF cards from a JSONL file and HTML template.")
 
@@ -28,6 +30,7 @@ def create_pdf(
     template_data: Dict[str, Any],
     template_file_name: str,
     output_dir: Path,
+    title: str | None = None,
 ) -> None:
     """Renders a single card from data to HTML and then to PDF."""
     # Create a new template environment for each worker
@@ -35,7 +38,10 @@ def create_pdf(
     env = Environment(loader=file_loader, autoescape=select_autoescape(["html", "xml"]))
     template = env.get_template(template_file_name)
 
-    card_title = template_data.get("title", template_data.get("section_name", "toc"))
+    if title is None:
+        card_title = template_data.get("title", template_data.get("section_name", "toc"))
+    else:
+        card_title = title
     base_filename = slugify(card_title)
 
     html_file_path = output_dir / f"{base_filename}.html"
@@ -93,14 +99,27 @@ def generate_cards(
                 line_content = line.strip()
                 if not line_content:
                     continue
-                cards_data.append((json.loads(line_content), i))
+                cards_data.append(json.loads(line_content))
     else:  # It's sections
         template = SECTION_TEMPLATE_FILENAME
         book_structure = json.loads(input_file.read_text(encoding="utf-8"))
         cards_data = book_structure["sections"]
 
         # Create TOC
-        create_pdf(book_structure, TOC_TEMPLATE_FILENAME, output_dir)
+        create_pdf(book_structure, TOC_TEMPLATE_FILENAME, output_dir, title="toc")
+
+        # Create pdf extracts
+        # extract_data = []
+        # for section in book_structure["sections"]:
+        #     extract_data.extend(section["key_passages"][:1])
+
+        # results = Parallel(n_jobs=n_jobs, return_as="generator_unordered")(
+        #     delayed(create_pdf)(data, KEY_PASSAGES_TEMPLATE_FILENAME, output_dir, title=f"passage_{i}") for i, data in enumerate(extract_data)
+        # )
+        # completed = 0
+        # for title in results:
+        #     completed += 1
+        #     print(f"Processed extract {completed}/{len(extract_data)}")
 
     # Process cards in paralle
     results = Parallel(n_jobs=n_jobs, return_as="generator_unordered")(

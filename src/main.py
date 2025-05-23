@@ -11,7 +11,7 @@ app = typer.Typer()
 
 @app.command()
 def main(
-    input_file: Path = typer.Argument(..., help="Path to the input JSONL file."),
+    input_files: list[Path] = typer.Argument(..., help="Path to the input JSONL file."),
     four_up: bool = typer.Option(
         False,
         "--four-up",
@@ -20,8 +20,10 @@ def main(
     ),
     show: bool = typer.Option(False, help="Show the output file in the default PDF viewer."),
 ) -> None:
-    pdf_dir = generate_cards(input_file)
-    output_file = input_file.with_name(f"{input_file.stem}_printable_cards.pdf").absolute()
+    for input_file in input_files:
+        pdf_dir = generate_cards(input_file)
+
+    output_file = input_file.with_name(f"{input_file.stem}_printable_cards.pdf")
     combine(pdf_dir, output_file, four_up)
     print(f"Printable cards saved to {output_file}")
     if show:

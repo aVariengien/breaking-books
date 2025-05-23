@@ -101,8 +101,8 @@
 <body>
     <div class="section-card" style="--section-color: {{ section_color['html_color']|default('#ffa500') }}">
         <div class="image-container">
-            {% if image_base64 %}
-            <img src="data:image/png;base64,{{ image_base64 }}" alt="Section image">
+            {% if image_b64 %}
+            <img src="data:image/png;base64,{{ image_b64 | safe}}" alt="Section image">
             {% else %}
             <div class="no-content">No image available</div>
             {% endif %}
