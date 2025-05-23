@@ -162,6 +162,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "jinja2" },
+    { name = "joblib" },
     { name = "litellm" },
     { name = "markdown" },
     { name = "pypdf" },
@@ -180,6 +181,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "joblib", specifier = ">=1.5.0" },
     { name = "litellm", specifier = ">=1.70.2" },
     { name = "markdown", specifier = ">=3.8" },
     { name = "pypdf", specifier = ">=5.5.0" },
@@ -790,6 +792,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/d8/b3/2bd02071c5a2430d0b70403a34411fc519c2f227da7b03da9ba6a956f931/jiter-0.10.0-cp314-cp314-win32.whl", hash = "sha256:ac509f7eccca54b2a29daeb516fb95b6f0bd0d0d8084efaf8ed5dfc7b9f0b357", size = 210127, upload_time = "2025-05-18T19:04:38.837Z" },
     { url = "https://files.pythonhosted.org/packages/03/0c/5fe86614ea050c3ecd728ab4035534387cd41e7c1855ef6c031f1ca93e3f/jiter-0.10.0-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:5ed975b83a2b8639356151cef5c0d597c68376fc4922b45d0eb384ac058cfa00", size = 318527, upload_time = "2025-05-18T19:04:40.612Z" },
     { url = "https://files.pythonhosted.org/packages/b3/4a/4175a563579e884192ba6e81725fc0448b042024419be8d83aa8a80a3f44/jiter-0.10.0-cp314-cp314t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3aa96f2abba33dc77f79b4cf791840230375f9534e5fac927ccceb58c5e604a5", size = 354213, upload_time = "2025-05-18T19:04:41.894Z" },
+]
+
+[[package]]
+name = "joblib"
+version = "1.5.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/30/08/8bd4a0250247861420a040b33ccf42f43c426ac91d99405374ef117e5872/joblib-1.5.0.tar.gz", hash = "sha256:d8757f955389a3dd7a23152e43bc297c2e0c2d3060056dad0feefc88a06939b5", size = 330234, upload_time = "2025-05-03T21:09:39.553Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/da/d3/13ee227a148af1c693654932b8b0b02ed64af5e1f7406d56b088b57574cd/joblib-1.5.0-py3-none-any.whl", hash = "sha256:206144b320246485b712fc8cc51f017de58225fa8b414a1fe1764a7231aca491", size = 307682, upload_time = "2025-05-03T21:09:37.892Z" },
 ]
 
 [[package]]
