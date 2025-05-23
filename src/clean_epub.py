@@ -1,3 +1,4 @@
+import re
 import subprocess
 from pathlib import Path
 
@@ -6,6 +7,22 @@ import typer
 app = typer.Typer()
 
 LUA_FILTER_FILENAME = "remove_footnotes.lua"
+
+
+def add_unique_ids(html_content: str) -> str:
+    """Add unique IDs to all HTML elements."""
+    id_counter = 0
+
+    def replace_tag(match):
+        nonlocal id_counter
+        id_counter += 1
+        # If there's whitespace after the tag name, keep it, otherwise add a space
+        end = match.group(2) or " "
+        return f'{match.group(1)} id="tag-{id_counter}"{end}'
+
+    # Match any opening HTML tag, with or without attributes
+    pattern = r"(<\w+)([\s>])"
+    return re.sub(pattern, replace_tag, html_content)
 
 
 @app.command()
@@ -56,7 +73,7 @@ def process_epub(
         str(input_epub),
         "-o",
         str(output_html),
-        "--standalone",
+        "--no-highlight",
         "--extract-media",
         str(extract_media_dir),
         f"--lua-filter={lua_filter_path}",
@@ -65,6 +82,12 @@ def process_epub(
     typer.echo(f"Running command: {' '.join(pandoc_command)}")
 
     subprocess.run(pandoc_command, check=True, text=True)
+
+    # Add unique IDs to HTML elements
+    html_content = output_html.read_text(encoding="utf-8")
+    modified_html = add_unique_ids(html_content)
+    output_html.write_text(modified_html, encoding="utf-8")
+
     typer.echo(
         f"Successfully converted '{input_epub}' to '{output_html}' with media extracted to '{extract_media_dir}'"
     )
