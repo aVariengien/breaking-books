@@ -27,19 +27,6 @@
 
         .section {
             margin-bottom: 15mm;
-            padding-left: 3mm;
-            position: relative;
-        }
-
-        .section::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 1.5mm;
-            background-color: var(--section-color);
-            border-radius: 1mm;
         }
 
         .section-header {
@@ -91,9 +78,10 @@
         }
 
         .chapter {
-            margin: 0 0 8mm 5mm;
-            padding-left: 3mm;
-            border-left: 0.2mm solid var(--section-color);
+            margin: 0 0 8mm 0mm;
+            padding: 0mm 0 0mm 5mm;
+            border-left: 2.5mm solid var(--section-color);
+            border-radius: 1mm;
         }
 
         .chapter-header {
