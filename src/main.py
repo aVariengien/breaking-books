@@ -1,4 +1,4 @@
-import subprocess
+import os
 from pathlib import Path
 
 import typer
@@ -19,7 +19,8 @@ def main(
     combine(pdf_dir, output_file)
     print(f"Printable cards saved to {output_file}")
     if show:
-        subprocess.run(["firefox", str(output_file)], shell=True)
+        cmd = f"firefox '{output_file}'"
+        os.system(cmd)
 
 
 if __name__ == "__main__":
