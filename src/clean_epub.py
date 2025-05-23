@@ -73,7 +73,7 @@ def process_epub(
         str(input_epub),
         "-o",
         str(output_html),
-        "--no-highlight",
+        "--standalone",
         "--extract-media",
         str(extract_media_dir),
         f"--lua-filter={lua_filter_path}",
