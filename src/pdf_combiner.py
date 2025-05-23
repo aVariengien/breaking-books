@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import typer
 from pypdf import PageObject, PdfReader, PdfWriter
@@ -22,8 +22,10 @@ A5_LANDSCAPE_HEIGHT = 419.528  # Standard A5 landscape height (148mm)
 A6_LANDSCAPE_WIDTH = 419.528
 A6_LANDSCAPE_HEIGHT = 297.638
 
+# Tolerance for page size comparison
+SIZE_TOLERANCE = 5.0  # points
 
-app = typer.Typer(help="Combines A5 landscape PDFs into an A4 PDF with multiple pages per sheet.")
+app = typer.Typer(help="Combines PDFs into printable layouts.")
 
 
 def get_pdf_files(input_dir: Path) -> List[Path]:
@@ -36,6 +38,73 @@ def get_pdf_files(input_dir: Path) -> List[Path]:
 
     typer.echo(f"Found {len(pdf_files)} PDF files to process.")
     return pdf_files
+
+
+def is_a4_page(page: PageObject) -> bool:
+    """Check if a page is A4 size (either portrait or landscape)."""
+    width, height = page.mediabox.width, page.mediabox.height
+
+    # Check if it's A4 portrait
+    if (
+        abs(width - A4_PORTRAIT_WIDTH) < SIZE_TOLERANCE
+        and abs(height - A4_PORTRAIT_HEIGHT) < SIZE_TOLERANCE
+    ):
+        return True
+
+    # Check if it's A4 landscape
+    if (
+        abs(width - A4_LANDSCAPE_WIDTH) < SIZE_TOLERANCE
+        and abs(height - A4_LANDSCAPE_HEIGHT) < SIZE_TOLERANCE
+    ):
+        return True
+
+    return False
+
+
+def is_a5_landscape_page(page: PageObject) -> bool:
+    """Check if a page is A5 landscape size."""
+    width, height = page.mediabox.width, page.mediabox.height
+
+    return (
+        abs(width - A5_LANDSCAPE_WIDTH) < SIZE_TOLERANCE
+        and abs(height - A5_LANDSCAPE_HEIGHT) < SIZE_TOLERANCE
+    )
+
+
+def categorize_pdf(pdf_path: Path) -> Tuple[bool, List[PageObject]]:
+    """
+    Categorize a PDF as either A4 multi-page or A5 landscape single-page.
+
+    Returns:
+        Tuple[bool, List[PageObject]]: (is_a4, list of pages)
+    """
+    try:
+        reader = PdfReader(str(pdf_path))
+        if not reader.pages:
+            typer.secho(f"Warning: {pdf_path.name} has no pages. Skipping.", fg=typer.colors.YELLOW)
+            return False, []
+
+        # Check the first page to determine the type
+        first_page = reader.pages[0]
+
+        # If it's a multi-page PDF with A4 pages, treat it as an A4 document
+        if len(reader.pages) > 1 or is_a4_page(first_page):
+            typer.echo(f"Detected A4 document: {pdf_path.name} ({len(reader.pages)} pages)")
+            return True, list(reader.pages)
+
+        # Otherwise, assume it's an A5 landscape single page
+        typer.echo(f"Detected A5 landscape page: {pdf_path.name}")
+        return False, [first_page]
+
+    except PdfReadError:
+        typer.secho(f"Error reading {pdf_path.name}. Skipping this file.", fg=typer.colors.RED)
+        return False, []
+    except Exception as e:
+        typer.secho(
+            f"An unexpected error occurred with {pdf_path.name}: {e}. Skipping this file.",
+            fg=typer.colors.RED,
+        )
+        return False, []
 
 
 def process_pdf_page(pdf_path: Path) -> Optional[PageObject]:
@@ -173,6 +242,29 @@ def create_4up_a4_page(writer: PdfWriter, pdf_paths: List[Path]) -> bool:
     return True
 
 
+def add_a4_pages(writer: PdfWriter, pages: List[PageObject], scale: float = 1.0) -> None:
+    """Add A4 pages directly to the writer, optionally scaling them.
+
+    Args:
+        writer: The PDF writer to add the page to
+        pages: List of A4 pages to add
+        scale: Scale factor (1.0 for no scaling, 0.5 for half size)
+    """
+    for page in pages:
+        if scale != 1.0:
+            # Create a blank page with scaled dimensions
+            width, height = page.mediabox.width * scale, page.mediabox.height * scale
+            new_page = writer.add_blank_page(width=width, height=height)
+
+            # Apply scaling transformation centered on the page
+            transform = (scale, 0, 0, scale, 0, 0)
+
+            new_page.merge_transformed_page(page, transform)
+        else:
+            # Add page directly if no scaling is needed
+            writer.add_page(page)
+
+
 def write_output_pdf(writer: PdfWriter, output_file: Path) -> None:
     """Write the PDF to the output file."""
     if not writer.pages:
@@ -197,7 +289,7 @@ def combine(
         ...,
         "--input-dir",
         "-i",
-        help="Directory containing A5 landscape, single-page PDF files.",
+        help="Directory containing PDF files to combine.",
         exists=True,
         file_okay=False,
         dir_okay=True,
@@ -217,20 +309,32 @@ def combine(
         False,
         "--four-up",
         "-4",
-        help="Use 4-up layout (4 A5 pages per A4 landscape sheet) instead of 2-up layout.",
+        help="Use 4-up layout for A5 pages (4 A5 pages per A4 landscape sheet) instead of 2-up layout.",
+    ),
+    scale_a4: bool = typer.Option(
+        False,
+        "--scale-a4",
+        "-s",
+        help="Scale A4 pages to A5 size (50% reduction) for more efficient printing.",
     ),
 ):
     """
-    Combines single-page A5 landscape PDFs from an input directory
-    into a single PDF with multiple pages per sheet.
+    Combines PDFs from an input directory into a single printable PDF.
 
-    Layout options:
+    Handles two types of input PDFs:
+    1. Single-page A5 landscape PDFs - These are combined into A4 sheets (2-up or 4-up)
+    2. Multi-page A4 PDFs - These are appended as-is, or scaled to A5 if --scale-a4 is used
+
+    Layout options for A5 pages:
     - Default (--four-up=False): Each A4 portrait page will contain two A5 pages, one above the other.
     - 4-up (--four-up=True): Each A4 landscape page will contain four A5 pages (scaled to A6), arranged in a 2x2 grid.
+
+    A4 pages can be scaled down to A5 size using the --scale-a4 option.
     """
     typer.secho(f"Input directory: {input_dir}", fg=typer.colors.BLUE)
     typer.secho(f"Output file: {output_file}", fg=typer.colors.BLUE)
-    typer.secho(f"Layout: {'4-up' if four_up else '2-up'}", fg=typer.colors.BLUE)
+    typer.secho(f"Layout for A5 pages: {'4-up' if four_up else '2-up'}", fg=typer.colors.BLUE)
+    typer.secho(f"Scale A4 pages to A5: {'Yes' if scale_a4 else 'No'}", fg=typer.colors.BLUE)
 
     # Get PDF files from input directory
     pdf_files = get_pdf_files(input_dir)
@@ -238,17 +342,38 @@ def combine(
     # Create PDF writer
     writer = PdfWriter()
 
-    # Process PDF files based on layout
-    if not four_up:
-        # Process PDF files in pairs
-        for i in range(0, len(pdf_files), 2):
-            pdf_paths = pdf_files[i : i + 2]
-            create_2up_a4_page(writer, pdf_paths)
-    else:
-        # Process PDF files in groups of 4
-        for i in range(0, len(pdf_files), 4):
-            pdf_paths = pdf_files[i : i + 4]
-            create_4up_a4_page(writer, pdf_paths)
+    # Categorize PDFs into A4 and A5
+    a5_pdf_paths = []
+    a4_pages = []
+
+    for pdf_path in pdf_files:
+        is_a4, pages = categorize_pdf(pdf_path)
+        if is_a4:
+            a4_pages.extend(pages)
+        else:
+            if pages:  # Only add if we got valid pages
+                a5_pdf_paths.append(pdf_path)
+
+    # Process A5 landscape PDFs
+    if a5_pdf_paths:
+        typer.secho(f"Processing {len(a5_pdf_paths)} A5 landscape PDFs...", fg=typer.colors.GREEN)
+
+        if not four_up:
+            # Process PDF files in pairs
+            for i in range(0, len(a5_pdf_paths), 2):
+                pdf_paths = a5_pdf_paths[i : i + 2]
+                create_2up_a4_page(writer, pdf_paths)
+        else:
+            # Process PDF files in groups of 4
+            for i in range(0, len(a5_pdf_paths), 4):
+                pdf_paths = a5_pdf_paths[i : i + 4]
+                create_4up_a4_page(writer, pdf_paths)
+
+    # Process A4 PDFs
+    if a4_pages:
+        typer.secho(f"Processing {len(a4_pages)} A4 pages...", fg=typer.colors.GREEN)
+        scale = 0.5 if scale_a4 else 1.0
+        add_a4_pages(writer, a4_pages, scale)
 
     # Write output PDF
     write_output_pdf(writer, output_file)
