@@ -1,4 +1,3 @@
-
 create_cards_declaration = {
     "name": "create_cards",
     "description": "Generates a set of formatted Zettelkasten cards from the provided card definitions.",
@@ -40,27 +39,101 @@ create_cards_declaration = {
 }
 
 
+MAXI_PROMPT = """You are a literary analyst with expertise in organizing complex texts into meaningful sections. I need you to analyze the book I provide and break it down into coherent thematic sections.
+
+For each section, follow these detailed instructions:
+
+1. Organize the book into logical sections based on thematic elements, narrative arcs, or major plot developments.
+
+2. For each section you identify, provide a structured analysis following this exact format:
+
+
+{{
+  "sections": [
+    {{
+      "section_name": "A descriptive name that captures the essence of this section",
+      "section_introduction": "An introduction explaining the key questions explored in this section. For sections after the first, explain how this section connects to and answers questions from the previous section.",
+      "section_color": {{
+        "name": "A color name that metaphorically represents the mood/theme of this section",
+        "rgb": {{
+          "r": 0-255,
+          "g": 0-255,
+          "b": 0-255
+        }}
+      }},
+      "key_passages": [
+        {{
+          "passage_start": "The exact beginning text of a key passage that exemplifies this section",
+          "passage_end": "The exact ending text of this key passage",
+          "chapter": "The chapter where this passage appears"
+        }}
+      ],
+      "visual_landscape_description": "A concise description of a landscape that visually represents the themes, mood, and emotional resonance of this section. Make this precise and specific enough that it could be illustrated.",
+      "chapters": [
+        {{
+          "chapter_name": "The exact title/number of the chapter",
+          "chapter_comment": "Your analysis of this chapter's significance within the section",
+          "chapter_start_excerpt": "The exact opening lines of this chapter",
+          "key_quotes": [
+            "A significant quote from this chapter",
+            "Another significant quote from this chapter"
+          ]
+        }}
+      ]
+    }}
+  ]
+}}
+
+Important guidelines:
+* Extract VERBATIM quotes for all passages, excerpts, and key quotes
+* Choose section colors that metaphorically align with the emotional tone or themes
+* Include 1-3 key passages that are half a page long per section that best represent the section's themes
+* Your landscape descriptions should be detailed and evocative, capturing the section's emotional essence
+* Identify 1-3 key quotes per chapter that highlight important moments, revelations, or character development
+* Make sure section introductions clearly articulate the thematic questions being explored and how they connect to previous sections
+* Please maintain the exact JSON structure provided. This analysis will be used for creating a visual and thematic guide to the book.
+
+# Book
+
+{BOOK}"""
+
 CARD_EXTRACTION_PROMPT = """
 # Instruction
-You are reading a long section of a book. You role is to create {NB_CARD} Zettelkasten cards containing the key ideas from the content of this section. Every cards has a title, a description, an illustration and an ensemble of quotes containing, supporting or embodying the idea. 
+You are reading a long section of a book. You role is to create {NB_CARD} Zettelkasten cards using HTML formatting containing the key ideas from the content of this section. Every cards has a title, a description, a type, an illustration and an ensemble of quotes containing, supporting or embodying the idea. 
 
 Ensure the cards cover _all_ the content from this section. If I were to use the cards in a slide show to present the section to an audience, I could use the cards as a slide show to tell the complete story of the section without loosing much details.
 
 ## Guidelines:
 1. Each card should represent ONE distinct, atomic idea from the text
 2. Ensure cards collectively cover the COMPLETE content of the section
-3. Use clear, precise language in the descriptions. Make use of bold HTML <b> tag for emphasis.
+3. Use clear, precise language in the descriptions. Make use of bold HTML <b>tags</b> for emphasis.
 4. Create simple, precise descriptions of PHOTOGRAPHIC illustration that gives understanding of the idea at first glance.
 5. The illustration should be of a scene or a situation that is representative of the idea, there should be NO LABEL, NO DIAGRAM and NO TEXT
 6. Extract 1 to 5 direct quotes that best exemplify each idea. Ensure quotes are full sentences that can be read as stand alone.
 7. Include ideas that are not directly named in the text but are present, scattered or diffused accross the text
-8. Include counterintuitive or surprising elements when present in the text
 
-## Output Format:
-The cards should be usable as:
-- A standalone reference to an idea
-- A sequential slide deck that tells the full narrative of the section
-- A network of interconnected ideas that maintains the author's original meaning
+# Book section
+
+{BOOK_SECTION}
+
+"""
+
+EXAMPLE_EXTRACTION_PROMPT = """
+# Instruction
+You are reading a long section of a book. Your role is to create {NB_CARD} (+/- 2 depending on the number of relevant examples) Zettelkasten cards using HTML formatting that highlight the key examples presented in this section. They sould be real-world applications, stories, case studies, metaphors the author uses to ground their arugments.
+
+Every card has a title, a description, a type, an illustration and an ensemble of quotes that present or elaborate on the example.
+
+Ensure the cards cover the most significant examples from this section. If I were to use these cards in a slide show to present the examples from the section to an audience, the cards would effectively showcase the practical applications and illustrations that the author uses to convey their points.
+
+## Guidelines:
+1. Each card should represent ONE distinct example or case study from the text
+2. Focus on concrete examples rather than abstract concepts
+3. Use clear and concise descriptions. Make use of bold HTML <b>tags</b> to highlight key aspects of each example
+4. Create simple, precise descriptions of PHOTOGRAPHIC illustration that visually represents the example
+5. The illustration should be of a scene or a situation that depicts the example
+6. Extract 1 to 5 direct quotes that present or elaborate on the example. Ensure quotes are full sentences that can be read as stand alone.
+7. Include real-world applications, stories, case studies, and instances that the author uses to support their arguments
 
 # Book section
 
