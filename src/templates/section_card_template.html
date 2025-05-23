@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ section_name }}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Source+Sans+Pro:wght@400;600&display=swap');
+
+        @page {
+            size: A5 landscape;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #fff;
+            color: #333;
+            overflow: hidden;
+        }
+
+        .section-card {
+            width: 210mm;
+            height: 148mm;
+            box-sizing: border-box;
+            position: relative;
+            display: block;
+            border: 1px solid #000;
+            overflow: hidden;
+        }
+
+        .image-container {
+            width: 100%;
+            height: 100mm;
+            overflow: hidden;
+            position: relative;
+            border-bottom: 1px solid #000;
+            display: block;
+        }
+
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .section-name-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            background-color: var(--section-color, #ffa500);
+            padding: 3mm 6mm;
+            max-width: 120mm;
+            z-index: 2;
+        }
+
+        .section-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 20pt;
+            font-weight: 700;
+            line-height: 1.2;
+            color: #fff;
+            margin: 0;
+            word-wrap: break-word;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .content {
+            padding: 6mm;
+            height: 47mm;
+            position: relative;
+            display: block;
+            overflow: hidden;
+        }
+
+        .section-introduction {
+            font-family: 'Source Sans Pro', sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            margin: 0;
+            display: block;
+            max-width: 190mm;
+            height: 100%;
+            overflow: hidden;
+            word-wrap: break-word;
+        }
+
+        .no-content {
+            color: #aaa;
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            background-color: #f7f7f7;
+        }
+    </style>
+</head>
+<body>
+    <div class="section-card" style="--section-color: {{ section_color['html_color']|default('#ffa500') }}">
+        <div class="image-container">
+            {% if image_base64 %}
+            <img src="data:image/png;base64,{{ image_base64 }}" alt="Section image">
+            {% else %}
+            <div class="no-content">No image available</div>
+            {% endif %}
+            <div class="section-name-container">
+                <h1 class="section-name">{{ section_name }}</h1>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="section-introduction">
+                {% if section_introduction %}
+                {{ section_introduction | safe }}
+                {% else %}
+                <div class="no-content">No introduction available</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
