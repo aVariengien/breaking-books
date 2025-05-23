@@ -10,7 +10,7 @@ from typing_extensions import Annotated
 from weasyprint import HTML
 
 # Global constant for the template filename
-CARD_TEMPLATE_FILENAME = "card_template_simple.html"
+CARD_TEMPLATE_FILENAME = "card_template.html"
 
 app = typer.Typer(help="CLI tool to generate PDF cards from a JSONL file and HTML template.")
 
