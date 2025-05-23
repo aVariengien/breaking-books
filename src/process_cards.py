@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import markdown
 import typer
-from jinja2 import Environment, FileSystemLoader, Template, select_autoescape
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+from joblib import Parallel, delayed
 from typing_extensions import Annotated
 from weasyprint import HTML
 
@@ -23,11 +25,16 @@ def slugify(text: str) -> str:
 def process_single_card(
     card_data: Dict[str, Any],
     card_index: int,
-    template: Template,
+    template_file_name: str,
     output_dir: Path,
     script_dir: Path,
 ) -> None:
     """Renders a single card from data to HTML and then to PDF."""
+    # Create a new template environment for each worker
+    file_loader = FileSystemLoader(str(script_dir))
+    env = Environment(loader=file_loader, autoescape=select_autoescape(["html", "xml"]))
+    template = env.get_template(template_file_name)
+
     card_title = card_data.get("title", f"Card_{card_index + 1}")
     base_filename = slugify(card_title) or f"card_{card_index + 1}"
 
@@ -42,6 +49,8 @@ def process_single_card(
 
     html_doc = HTML(string=rendered_html, base_url=str(script_dir))
     html_doc.write_pdf(pdf_file_path)
+
+    return card_title
 
 
 @app.command()
@@ -65,6 +74,10 @@ def generate_cards(
         Optional[str],
         typer.Option(help="Name for the output directory. If None, derived from input filename."),
     ] = None,
+    n_jobs: Annotated[
+        Optional[int],
+        typer.Option(help="Number of parallel jobs. If None, uses number of CPU cores."),
+    ] = None,
 ) -> None:
     """Processes a JSON Lines file to generate HTML cards and convert them to PDF."""
 
@@ -76,29 +89,35 @@ def generate_cards(
 
     script_dir = Path(__file__).resolve().parent
 
-    # Assuming template is always in the same directory as the script
-    file_loader = FileSystemLoader(str(script_dir))
-    env = Environment(loader=file_loader, autoescape=select_autoescape(["html", "xml"]))
+    # Use all CPU cores if n_jobs is not specified
+    if n_jobs is None:
+        n_jobs = os.cpu_count()
 
-    # No try-except here: if template is missing, Jinja2 will raise TemplateNotFound
-    # and the script will halt, as per the "ALWAYS there" assumption.
-    template = env.get_template(template_file_name)
-
-    print(f"Processing {jsonl_file_path}...")
-    print(f"Template: {script_dir / template_file_name}")
     print(f"Processing {jsonl_file_path}...")
     print(f"Template: {script_dir / template_file_name}")
     print(f"Output will be saved in '{output_dir}'")
+    print(f"Using {n_jobs} parallel jobs")
 
+    # Load all card data first
+    cards_data = []
     with jsonl_file_path.open("r", encoding="utf-8") as f_in:
         for i, line in enumerate(f_in):
             line_content = line.strip()
             if not line_content:
                 continue
+            cards_data.append((json.loads(line_content), i))
 
-            data = json.loads(line_content)
-            process_single_card(data, i, template, output_dir, script_dir)
-            print(f"Processed card {i + 1}: {data.get('title', 'Untitled')}")
+    # Process cards in parallel - pass template_file_name instead of template object
+    results = Parallel(n_jobs=n_jobs, return_as="generator_unordered")(
+        delayed(process_single_card)(data, idx, template_file_name, output_dir, script_dir)
+        for data, idx in cards_data
+    )
+
+    # Process results as they complete
+    completed = 0
+    for title in results:
+        completed += 1
+        print(f"Processed card {completed}/{len(cards_data)}: {title}")
 
     print("\nProcessing complete.")
     return output_dir
