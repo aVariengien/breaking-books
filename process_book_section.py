@@ -12,14 +12,10 @@ import base64
 from pydantic import BaseModel, Field
 from typing import List
 
-class RGB(BaseModel):
-    r: int = Field(..., description="Red value (0-255)", le=255)
-    g: int = Field(..., description="Green value (0-255)", le=255)
-    b: int = Field(..., description="Blue value (0-255)", le=255)
 
 class SectionColor(BaseModel):
     name: str = Field(..., description="The name of the color assigned to this section")
-    rgb: RGB
+    html_color: str = Field(..., description="The html hex code of the color like #1A2B3C")
 
 class KeyPassage(BaseModel):
     passage_start: str = Field(..., description="The starting text of the key passage (verbatim quote)")
@@ -222,11 +218,130 @@ print(json.dumps(book_structure.model_dump(), indent=2))
 
 # %%
 
+def progressive_search(book: str, search_text: str, start_pos: int = 0) -> int:
+    """
+    Progressively search for a text in a book by gradually increasing the search string length
+    until a unique match is found.
+    
+    Args:
+        book: The text to search in
+        search_text: The text to search for
+        start_pos: The position to start searching from
+        
+    Returns:
+        int: Position of the match if found, -1 if not found
+    """
+    if not search_text:
+        return -1
+        
+    # Start with a minimum length of 5 characters
+    min_length = 5
+    current_length = min_length
+    
+    # If the search text is shorter than min_length, use its full length
+    if len(search_text) < min_length:
+        current_length = len(search_text)
+    
+    # Keep track of the last position where we found a match
+    last_match_pos = -1
+    last_match_count = 0
+    
+    while current_length <= len(search_text):
+        # Get the current search string
+        current_search = search_text[:current_length]
+        
+        # Find all occurrences
+        pos = start_pos
+        match_count = 0
+        match_pos = -1
+        
+        while True:
+            pos = book.find(current_search, pos)
+            if pos == -1:
+                break
+            match_count += 1
+            match_pos = pos
+            pos += 1
+        
+        # If we found exactly one match, we're done
+        if match_count == 1:
+            return match_pos
+            
+        # If we found no matches, return the last position where we had a match
+        if match_count == 0:
+            return last_match_pos if last_match_count == 1 else -1
+            
+        # If we found multiple matches, continue with a longer search string
+        last_match_pos = match_pos
+        last_match_count = match_count
+        
+        # Increase the search length
+        current_length += 5
+        if current_length > len(search_text):
+            current_length = len(search_text)
+    
+    # If we've tried the full string and still have multiple matches,
+    # return the first match position
+    return last_match_pos if last_match_count > 0 else -1
 
+def split_book_into_sections(book: str, book_structure: BookStructure) -> list[str]:
+    """
+    Split the book into sections using the chapter_start_excerpt of the first chapter in each section as delimiter.
+    
+    Args:
+        book: The full book text
+        book_structure: The BookStructure object containing section information
+        
+    Returns:
+        list[str]: List of section texts
+    """
+    sections = []
+    current_pos = 0
+    
+    for section in book_structure.sections:
+        if not section.chapters:  # Skip if section has no chapters
+            continue
+            
+        # Get the start excerpt of the first chapter in the section
+        first_chapter_start = section.chapters[0].chapter_start_excerpt
+        
+        # Find the position of this excerpt in the book using progressive search
+        start_pos = progressive_search(book, first_chapter_start, current_pos)
+        if start_pos == -1:  # If excerpt not found, skip this section
+            print(f"Warning: Could not find start excerpt for section: {section.section_name}")
+            print(f"{first_chapter_start}")
+            continue
+            
+        # If this is not the first section, update the current position
+        if current_pos > 0:
+            current_pos = start_pos
+            
+        # Find the start of the next section (or end of book)
+        next_section_start = len(book)
+        current_section_index = book_structure.sections.index(section)
+        
+        # If there is a next section, find its start
+        if current_section_index < len(book_structure.sections) - 1:
+            next_section = book_structure.sections[current_section_index + 1]
+            next_section_start = progressive_search(book, next_section.chapters[0].chapter_start_excerpt, start_pos + 1)
+            if next_section_start == -1:  # If not found, use end of book
+                next_section_start = len(book)
+        
+        # Extract the section text
+        section_text = book[current_pos:next_section_start].strip()
+        sections.append(section_text)
+        
+        # Update current position for next iteration
+        current_pos = next_section_start
+    
+    return sections
+
+sections = split_book_into_sections(book, book_structure)
 
 # %%
 with open("book_section.md", "r") as f:
     book_section = f.read()
+
 
 # Process the book section
 
@@ -256,54 +371,6 @@ print(f"Generated {len(cards.card_definitions)} cards with images and saved to c
 
 
 # %%
-
-def split_book_into_sections(book: str, book_structure: BookStructure) -> list[str]:
-    """
-    Split the book into sections using the chapter_start_excerpt of the first chapter in each section as delimiter.
-    
-    Args:
-        book: The full book text
-        book_structure: The BookStructure object containing section information
-        
-    Returns:
-        list[str]: List of section texts
-    """
-    sections = []
-    current_pos = 0
-    
-    for section in book_structure.sections:
-        if not section.chapters:  # Skip if section has no chapters
-            continue
-            
-        # Get the start excerpt of the first chapter in the section
-        first_chapter_start = section.chapters[0].chapter_start_excerpt
-        
-        # Find the position of this excerpt in the book
-        start_pos = book.find(first_chapter_start, current_pos)
-        if start_pos == -1:  # If excerpt not found, skip this section
-            print(f"Warning: Could not find start excerpt for section: {section.section_name}")
-            continue
-            
-        # If this is not the first section, update the current position
-        if current_pos > 0:
-            current_pos = start_pos
-            
-        # Find the start of the next section (or end of book)
-        next_section_start = len(book)
-        for next_section in book_structure.sections:
-            if next_section.sections.index(section) < len(book_structure.sections) - 1:
-                next_section_start = book.find(next_section.chapters[0].chapter_start_excerpt, start_pos + 1)
-                if next_section_start != -1:
-                    break
-        
-        # Extract the section text
-        section_text = book[current_pos:next_section_start].strip()
-        sections.append(section_text)
-        
-        # Update current position for next iteration
-        current_pos = next_section_start
-    
-    return sections
 
 # Example usage:
 # sections = split_book_into_sections(book, book_structure)
