@@ -13,7 +13,6 @@ from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 from typing import List
 
-os.environ["GEMINI_API_KEY"] = "AIzaSyDQTEPI1STR2RhYBENaPkVvAdjWnsEHyds"
 
 MODEL_NAME = "gemini/gemini-2.5-flash-preview-05-20" # gemini/gemini-2.5-flash-preview-05-20
 
