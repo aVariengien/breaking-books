@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Table of Contents</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Source+Sans+Pro:wght@400;600&display=swap');
+
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #fff;
+            color: #333;
+            font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .toc-container {
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 10mm 0;
+        }
+
+        .section {
+            margin-bottom: 15mm;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 5mm;
+            margin-bottom: 8mm;
+            padding-bottom: 3mm;
+            border-bottom: 0.2mm solid #eee;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 24pt;
+            font-weight: 700;
+            color: #1a1a1a;
+            flex-grow: 1;
+        }
+
+        .section-image {
+            width: 30mm;
+            height: 20mm;
+            object-fit: cover;
+            border-radius: 2mm;
+            background: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: 0 1mm 2mm rgba(0,0,0,0.1);
+        }
+
+        .image-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(45deg, #f5f5f5 25%, #eeeeee 25%, #eeeeee 50%, #f5f5f5 50%, #f5f5f5 75%, #eeeeee 75%, #eeeeee 100%);
+            background-size: 8mm 8mm;
+            position: relative;
+        }
+
+        .image-placeholder::after {
+            content: '📷';
+            font-size: 12pt;
+            color: #999;
+            position: absolute;
+        }
+
+        .chapter {
+            margin: 0 0 8mm 0mm;
+            padding: 0mm 0 0mm 5mm;
+            border-left: 2.5mm solid var(--section-color);
+            border-radius: 1mm;
+        }
+
+        .chapter-header {
+            margin-bottom: 3mm;
+        }
+
+        .chapter-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 16pt;
+            color: #1a1a1a;
+            margin: 0;
+            line-height: 1.3;
+        }
+
+        .chapter-comment {
+            display: block;
+            font-size: 11pt;
+            color: #666;
+            font-style: italic;
+            margin-top: 2mm;
+        }
+
+        .key-quotes {
+            margin: 4mm 0 0 2mm;
+            font-size: 10pt;
+            color: #444;
+        }
+
+        .key-quotes ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin: 0;
+        }
+
+        .key-quotes li {
+            margin-bottom: 2mm;
+            position: relative;
+            padding-left: 5mm;
+            line-height: 1.4;
+        }
+
+        .key-quotes li::before {
+            content: "\201C";
+            position: absolute;
+            left: 0;
+            top: -1px;
+            font-size: 14pt;
+            color: var(--section-color);
+            font-family: 'Playfair Display', serif;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="toc-container">
+        {% for section in sections %}
+        <div class="section" style="--section-color: {{ section.section_color.html_color }}">
+            <div class="section-header">
+                <h2 class="section-title">{{ section.section_name }}</h2>
+                <div class="section-image">
+                    {% if section.image_b64 %}
+                    <img src="data:image/png;base64,{{ section.image_b64 }}" alt="Section image">
+                    {% else %}
+                    <div class="image-placeholder"></div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% for chapter in section.chapters %}
+            <div class="chapter">
+                <div class="chapter-header">
+                    <h3 class="chapter-title">{{ chapter.chapter_name }}</h3>
+                    {% if chapter.chapter_comment %}
+                    <span class="chapter-comment">{{ chapter.chapter_comment }}</span>
+                    {% endif %}
+                </div>
+
+                {% if chapter.key_quotes %}
+                <div class="key-quotes">
+                    <ul>
+                        {% for quote in chapter.key_quotes %}
+                        <li>{{ quote }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
