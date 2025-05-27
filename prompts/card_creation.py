@@ -39,55 +39,15 @@ create_cards_declaration = {
 }
 
 
-MAXI_PROMPT = """You are a literary analyst with expertise in organizing complex texts into meaningful sections. I need you to analyze the book I provide and break it down into coherent thematic sections.
+MAXI_PROMPT = """You are a literary analyst with expertise in organizing complex texts into meaningful 2 to 4 logical sections based on thematic elements, narrative arcs, or major plot developments. I need you to analyze the book I provide and break it down into coherent thematic sections.
 
-For each section, follow these detailed instructions:
-
-1. Organize the book into logical sections based on thematic elements, narrative arcs, or major plot developments.
-
-2. For each section you identify, provide a structured analysis following this exact format:
-
-
-{{
-  "sections": [
-    {{
-      "section_name": "A descriptive name that captures the essence of this section",
-      "section_introduction": "An introduction explaining the key questions explored in this section. For sections after the first, explain how this section connects to and answers questions from the previous section.",
-      "section_color": {{
-        "name": "A color name that metaphorically represents the mood/theme of this section",
-        "rgb": {{
-          "r": 0-255,
-          "g": 0-255,
-          "b": 0-255
-        }}
-      }},
-      "key_passages": [
-        {{
-          "passage_start": "The exact beginning text of a key passage that exemplifies this section",
-          "passage_end": "The exact ending text of this key passage",
-          "chapter": "The chapter where this passage appears"
-        }}
-      ],
-      "visual_landscape_description": "A concise description of a landscape that visually represents the themes, mood, and emotional resonance of this section. Make this precise and specific enough that it could be illustrated.",
-      "chapters": [
-        {{
-          "chapter_name": "The exact title/number of the chapter",
-          "chapter_comment": "Your analysis of this chapter's significance within the section",
-          "chapter_start_excerpt": "The exact opening lines of this chapter",
-          "key_quotes": [
-            "A significant quote from this chapter",
-            "Another significant quote from this chapter"
-          ]
-        }}
-      ]
-    }}
-  ]
-}}
+The book is in html format with html tags marked by tag ids (e.g. id="tag-230") that marks the position in the text. You will be asked to give these tag values to mark the end and the beginning of a section or excerpt.
 
 Important guidelines:
 * Extract VERBATIM quotes for all passages, excerpts, and key quotes
+* Use mardown formatting to add emphasis like bold and italic to the section descriptions
 * Choose section colors that metaphorically align with the emotional tone or themes
-* Include 1-3 key passages that are half a page long per section that best represent the section's themes
+* Include 1-3 key passages that are around half a page long that best represent the section's themes
 * Your landscape descriptions should be detailed and evocative, capturing the section's emotional essence
 * Identify 1-3 key quotes per chapter that highlight important moments, revelations, or character development
 * Make sure section introductions clearly articulate the thematic questions being explored and how they connect to previous sections
