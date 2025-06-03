@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Annotated, List, Optional, Tuple
 
 import typer
 from pypdf import PageObject, PdfReader, PdfWriter
@@ -285,39 +285,47 @@ def write_output_pdf(writer: PdfWriter, output_file: Path) -> None:
 
 @app.command()
 def combine(
-    input_dir: Path = typer.Option(
-        ...,
-        "--input-dir",
-        "-i",
-        help="Directory containing PDF files to combine.",
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        readable=True,
-        resolve_path=True,
-    ),
-    output_file: Path = typer.Option(
-        ...,
-        "--output-file",
-        "-o",
-        help="Path for the combined PDF file.",
-        writable=True,  # Checks if parent dir is writable for new file
-        dir_okay=False,
-        resolve_path=True,
-    ),
-    four_up: bool = typer.Option(
-        False,
-        "--four-up",
-        "-4",
-        help="Use 4-up layout for A5 pages (4 A5 pages per A4 landscape sheet) instead of 2-up layout.",
-    ),
-    scale_a4: bool = typer.Option(
-        False,
-        "--scale-a4",
-        "-s",
-        help="Scale A4 pages to A5 size (50% reduction) for more efficient printing.",
-    ),
-):
+    input_dir: Annotated[
+        Path,
+        typer.Option(
+            "--input-dir",
+            "-i",
+            help="Directory containing PDF files to combine.",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            resolve_path=True,
+        ),
+    ],
+    output_file: Annotated[
+        Path,
+        typer.Option(
+            "--output-file",
+            "-o",
+            help="Path for the combined PDF file.",
+            writable=True,  # Checks if parent dir is writable for new file
+            dir_okay=False,
+            resolve_path=True,
+        ),
+    ],
+    four_up: Annotated[
+        bool,
+        typer.Option(
+            "--four-up",
+            "-4",
+            help="Use 4-up layout for A5 pages (4 A5 pages per A4 landscape sheet) instead of 2-up layout.",
+        ),
+    ] = False,
+    scale_a4: Annotated[
+        bool,
+        typer.Option(
+            "--scale-a4",
+            "-s",
+            help="Scale A4 pages to A5 size (50% reduction) for more efficient printing.",
+        ),
+    ] = False,
+) -> Path:
     """
     Combines PDFs from an input directory into a single printable PDF.
 
@@ -377,6 +385,8 @@ def combine(
 
     # Write output PDF
     write_output_pdf(writer, output_file)
+
+    return output_file
 
 
 if __name__ == "__main__":

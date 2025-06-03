@@ -80,7 +80,7 @@ def generate_cards(
         Optional[int],
         typer.Option(help="Number of parallel jobs. If None, uses number of CPU cores."),
     ] = None,
-) -> None:
+) -> Path:
     """Processes a JSON Lines file to generate HTML cards and convert them to PDF."""
 
     output_dir = input_file.parent / (input_file.stem + "_output")
