@@ -5,10 +5,12 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import streamlit as st
+from ai_transforms import create_book_structure
 from pydantic import BaseModel
 
+from clean_epub import epub_to_clean_html
 from pdf_combiner import combine
-from process_cards import generate_cards
+from process_cards import generate_cards, generate_section_cards, generate_toc
 
 
 class Asset(BaseModel):
@@ -26,9 +28,14 @@ class Asset(BaseModel):
 
 
 class Assets:
+    EPUB = Asset(name="EPUB", type="epub")
+    CLEAN_HTML = Asset(name="Clean HTML", type="html")
     COMBINED_PDF = Asset(name="✨ Combined PDF", type="pdf")
     PDF_DIR = Asset(name="PDF directory", type="pdf", multiple=True)
     CARDS_JSONL = Asset(name="Cards JSONL", type="jsonl")
+    STRUCTURE_JSON = Asset(name="Structure JSON", type="json")
+    TOC_PDF = Asset(name="Table of Contents PDF", type="pdf")
+    TOC_HTML = Asset(name="Table of Contents HTML", type="html")
 
 
 class Step:
@@ -78,14 +85,14 @@ class GenerateCardPdfsStep(Step):
     def __init__(self) -> None:
         self.n_jobs = os.cpu_count()
 
-    def configure(self):
-        self.n_jobs = st.number_input(
-            "Number of parallel jobs",
-            min_value=1,
-            max_value=os.cpu_count(),
-            value=self.n_jobs,
-            key="generate_cards_pdfs.n_jobs",
-        )
+    # def configure(self):
+    #     self.n_jobs = st.number_input(
+    #         "Number of parallel jobs",
+    #         min_value=1,
+    #         max_value=os.cpu_count(),
+    #         value=self.n_jobs,
+    #         key="generate_cards_pdfs.n_jobs",
+    #     )
 
     def list_inputs(self) -> list[Assets]:
         return [Assets.CARDS_JSONL]
@@ -96,6 +103,84 @@ class GenerateCardPdfsStep(Step):
     def run(self, inputs):
         output_dir = generate_cards(inputs[Assets.CARDS_JSONL], n_jobs=self.n_jobs)
         return {Assets.PDF_DIR: output_dir}
+
+
+class GenerateTocPdfStep(Step):
+    name = "Generate fancy Table of Contents"
+
+    def list_inputs(self) -> list[Assets]:
+        return [Assets.STRUCTURE_JSON]
+
+    def list_outputs(self) -> list[Assets]:
+        return [Assets.TOC_PDF, Assets.PDF_DIR]
+
+    def run(self, inputs):
+        toc_pdf = generate_toc(inputs[Assets.STRUCTURE_JSON])
+        return {Assets.TOC_PDF: toc_pdf, Assets.TOC_HTML: toc_pdf.with_suffix(".html")}
+
+
+class GenerateSectionCardsPdfStep(Step):
+    name = "Generate section cards"
+
+    def __init__(self) -> None:
+        self.n_jobs = os.cpu_count()
+
+    def list_inputs(self) -> list[Assets]:
+        return [Assets.STRUCTURE_JSON]
+
+    def list_outputs(self) -> list[Assets]:
+        return [Assets.PDF_DIR]
+
+    def run(self, inputs):
+        output_dir = generate_section_cards(inputs[Assets.STRUCTURE_JSON], n_jobs=self.n_jobs)
+        return {Assets.PDF_DIR: output_dir}
+
+
+class CleanEpubStep(Step):
+    name = "Clean EPUB"
+
+    def list_inputs(self) -> list[Assets]:
+        return [Assets.EPUB]
+
+    def list_outputs(self) -> list[Assets]:
+        return [Assets.CLEAN_HTML]
+
+    def run(self, inputs):
+        epub = inputs[Assets.EPUB]
+        clean_html = epub_to_clean_html(epub, None, None)
+        return {Assets.CLEAN_HTML: clean_html}
+
+
+class CreateBookStructureStep(Step):
+    name = "Create book structure"
+
+    def list_inputs(self) -> list[Assets]:
+        return [Assets.CLEAN_HTML]
+
+    def list_outputs(self) -> list[Assets]:
+        return [Assets.STRUCTURE_JSON]
+
+    def run(self, inputs):
+        clean_html = inputs[Assets.CLEAN_HTML]
+        book_structure = create_book_structure(clean_html.read_text())
+        book_structure_path = clean_html.parent / "book_structure.json"
+        book_structure_path.write_text(book_structure.model_dump_json())
+        return {Assets.STRUCTURE_JSON: book_structure_path}
+
+
+class GenerateCardsStep(Step):
+    name = "Generate cards"
+
+    def list_inputs(self) -> list[Assets]:
+        return [Assets.STRUCTURE_JSON]
+
+    def list_outputs(self) -> list[Assets]:
+        return [Assets.CARDS_JSONL]
+
+    def run(self, inputs):
+        book_structure = inputs[Assets.STRUCTURE_JSON]
+        cards = generate_cards(book_structure)
+        return {Assets.CARDS_JSONL: cards}
 
 
 class Pipeline:
@@ -137,7 +222,7 @@ class Pipeline:
         for i, asset in enumerate(required_inputs - outputs):
             inputs[asset] = asset.prompt(f"upload_{asset.name}_{i}")
 
-        can_run = all(asset is not None for asset in inputs.values())
+        can_run = all(asset for asset in inputs.values())
         run = st.button("Run pipeline (requires all inputs)", type="primary", disabled=not can_run)
 
         if run:
@@ -158,8 +243,9 @@ class Pipeline:
                 if isinstance(output, Path):
                     if output.is_file():
                         st.download_button(asset.name, output.open("rb"), file_name=output.name)
+        if tmp_dir := st.session_state.get("tmp_dir", None):
             st.subheader("Download other outputs")
-            self.download_directory(st.session_state.get("tmp_dir", None))
+            self.download_directory(tmp_dir)
 
         with st.sidebar:
             # Enable to delete the temporary directory
@@ -226,5 +312,14 @@ class Pipeline:
 
 
 if __name__ == "__main__":
-    pipeline = Pipeline([GenerateCardPdfsStep(), CombinePdfStep()])
+    pipeline = Pipeline(
+        [
+            CleanEpubStep(),
+            CreateBookStructureStep(),
+            GenerateTocPdfStep(),
+            GenerateSectionCardsPdfStep(),
+            GenerateCardPdfsStep(),
+            CombinePdfStep(),
+        ]
+    )
     pipeline.main()

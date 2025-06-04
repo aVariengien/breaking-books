@@ -6,6 +6,7 @@ import typer
 
 app = typer.Typer()
 
+
 LUA_FILTER_FILENAME = "remove_footnotes.lua"
 
 
@@ -26,7 +27,7 @@ def add_unique_ids(html_content: str) -> str:
 
 
 @app.command()
-def process_epub(
+def epub_to_clean_html(
     input_epub: Path = typer.Argument(
         ...,
         exists=True,

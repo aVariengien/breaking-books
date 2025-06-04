@@ -12,30 +12,28 @@ create_cards_declaration = {
                     "properties": {
                         "title": {
                             "type": "string",
-                            "description": "Concise title that captures the core idea of the card in a few words."
+                            "description": "Concise title that captures the core idea of the card in a few words.",
                         },
                         "description": {
                             "type": "string",
-                            "description": "Concise explanation of the idea (~ 3 sentences)."
+                            "description": "Concise explanation of the idea (~ 3 sentences).",
                         },
                         "illustration": {
                             "type": "string",
-                            "description": "Detailed description of a visual that represents the idea (without any text elements). Be creative and imaginative: if the idea is visual in nature, simply translate it into a clear scene, else you can use precise visual metaphor to illustrate an idea that is too abstract."
+                            "description": "Detailed description of a visual that represents the idea (without any text elements). Be creative and imaginative: if the idea is visual in nature, simply translate it into a clear scene, else you can use precise visual metaphor to illustrate an idea that is too abstract.",
                         },
                         "quotes": {
                             "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "Set of 1-5 direct quotes from the book where the idea appear"
+                            "items": {"type": "string"},
+                            "description": "Set of 1-5 direct quotes from the book where the idea appear",
                         },
                     },
-                    "required": ["title", "description", "quotes", "illustration"]
-                }
+                    "required": ["title", "description", "quotes", "illustration"],
+                },
             },
         },
-        "required": ["card_definitions"]
-    }
+        "required": ["card_definitions"],
+    },
 }
 
 
@@ -59,7 +57,7 @@ Important guidelines:
 
 CARD_EXTRACTION_PROMPT = """
 # Instruction
-You are reading a long section of a book. You role is to create {NB_CARD} Zettelkasten cards using HTML formatting containing the key ideas from the content of this section. Every cards has a title, a description, a type, an illustration and an ensemble of quotes containing, supporting or embodying the idea. 
+You are reading a long section of a book. You role is to create {NB_CARD} Zettelkasten cards using HTML formatting containing the key ideas from the content of this section. Every cards has a title, a description, a type, an illustration and an ensemble of quotes containing, supporting or embodying the idea.
 
 Ensure the cards cover _all_ the content from this section. If I were to use the cards in a slide show to present the section to an audience, I could use the cards as a slide show to tell the complete story of the section without loosing much details.
 
