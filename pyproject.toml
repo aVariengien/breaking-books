@@ -44,4 +44,6 @@ line-length = 100
 dev = [
     "ipykernel>=6.29.5",
     "pre-commit>=4.2.0",
+    "pytest>=8.4.0",
+    "pytest-asyncio>=1.0.0",
 ]
