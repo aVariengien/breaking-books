@@ -205,8 +205,6 @@ def save_game_data(cards: CardSet, book_structure: BookStructure, filename: str)
     with cards_file.open("w") as f:
         for card in cards.card_definitions:
             card_dict = card.model_dump()
-            # Move image from illustration field to separate image_base64 field for compatibility
-            card_dict["image_base64"] = card_dict["illustration"]
             f.write(json.dumps(card_dict) + "\n")
 
     # Save book structure as JSON
@@ -216,6 +214,8 @@ def save_game_data(cards: CardSet, book_structure: BookStructure, filename: str)
 
     print(f"Saved {len(cards.card_definitions)} cards to {cards_file}")
     print(f"Saved book structure to {structure_file}")
+
+    return cards_file, structure_file
 
 
 async def generate_section_cards_async(section_text: str, num_cards: int) -> CardSet:

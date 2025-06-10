@@ -98,7 +98,7 @@ def _process_cards_parallel(
     template_filename: str,
     output_dir: Path,
     n_jobs: int | None = None,
-) -> Path:
+) -> list[Path]:
     """Common function to process cards in parallel."""
     output_dir.mkdir(exist_ok=True)
 
@@ -113,15 +113,17 @@ def _process_cards_parallel(
 
     # Process results as they complete
     completed = 0
-    for title in results:
+    pdf_paths = []
+    for file_path in results:
         completed += 1
-        print(f"Processed card {completed}/{len(cards_data)}: {title}")
+        print(f"Processed card {completed}/{len(cards_data)}: {file_path}")
+        pdf_paths.append(file_path)
 
-    return output_dir
+    return pdf_paths
 
 
 @app.command()
-def generate_cards(input_file: JsonLinesInputFile, n_jobs: NJobsOption = None) -> Path:
+def generate_cards(input_file: JsonLinesInputFile, n_jobs: NJobsOption = None) -> list[Path]:
     """Processes a JSON Lines file to generate HTML cards and convert them to PDF."""
     output_dir = input_file.parent / (input_file.stem + "_output")
 
@@ -137,7 +139,7 @@ def generate_cards(input_file: JsonLinesInputFile, n_jobs: NJobsOption = None) -
 
 
 @app.command()
-def generate_section_cards(input_file: JsonInputFile, n_jobs: NJobsOption = None) -> Path:
+def generate_section_cards(input_file: JsonInputFile, n_jobs: NJobsOption = None) -> list[Path]:
     """Processes a JSON file with book structure to generate section cards and TOC as PDFs."""
     output_dir = input_file.parent / (input_file.stem + "_output")
     output_dir.mkdir(exist_ok=True)

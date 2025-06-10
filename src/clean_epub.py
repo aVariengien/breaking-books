@@ -26,49 +26,36 @@ def add_unique_ids(html_content: str) -> str:
     return re.sub(pattern, replace_tag, html_content)
 
 
-@app.command()
-def epub_to_clean_html(
-    input_epub: Path = typer.Argument(
-        ...,
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-        help="Path to the input EPUB file.",
-    ),
-    output_html: Path = typer.Argument(
-        None,
-        file_okay=True,
-        dir_okay=False,
-        writable=True,
-        help="Path for the output HTML file. Defaults to the input filename with an .html extension.",
-    ),
-    extract_media_dir: Path = typer.Option(
-        None,
-        help="Directory to extract media files to. Defaults to input filename with _media suffix. It will be created if it doesn't exist.",
-    ),
-):
+def convert_epub_to_html(
+    input_epub: Path,
+    output_html: Path | None = None,
+    extract_media_dir: Path | None = None,
+) -> Path:
     """
-    Converts an EPUB file to a clean HTML file, removing footnotes
-    and extracting media.
+    Convert an EPUB file to clean HTML, removing footnotes, adding unique IDs to all HTML elements, and extracting media.
+
+    Args:
+        input_epub: Path to the input EPUB file
+        output_html: Path for output HTML file. Defaults to input filename with .html extension
+        extract_media_dir: Directory to extract media files to. Defaults to input filename with _media suffix
+
+    Returns:
+        Path to the generated HTML file
     """
     script_dir = Path(__file__).parent.resolve()
     lua_filter_path = script_dir / LUA_FILTER_FILENAME
 
-    # Determine output_html if not provided
+    # Set defaults if not provided
     if output_html is None:
         output_html = input_epub.with_suffix(".html")
 
-    # Determine extract_media_dir if not provided
     if extract_media_dir is None:
         extract_media_dir = input_epub.parent / f"{input_epub.stem}_media"
 
-    # Ensure extract_media_dir exists and inform user
+    # Ensure extract_media_dir exists
     extract_media_dir.mkdir(parents=True, exist_ok=True)
-    typer.echo(
-        f"Info: Media will be extracted to '{extract_media_dir}'. This directory will be created if it doesn't exist. Existing files may be overwritten."
-    )
 
+    # Run pandoc conversion
     pandoc_command = [
         "pandoc",
         str(input_epub),
@@ -80,8 +67,6 @@ def epub_to_clean_html(
         f"--lua-filter={lua_filter_path}",
     ]
 
-    typer.echo(f"Running command: {' '.join(pandoc_command)}")
-
     subprocess.run(pandoc_command, check=True, text=True)
 
     # Add unique IDs to HTML elements
@@ -89,8 +74,29 @@ def epub_to_clean_html(
     modified_html = add_unique_ids(html_content)
     output_html.write_text(modified_html, encoding="utf-8")
 
+    return output_html
+
+
+@app.command()
+def epub_to_clean_html(
+    input_epub: Path = typer.Argument(
+        ...,
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        help="Path to the input EPUB file.",
+    ),
+    extract_media_dir: Path = typer.Option(
+        None,
+        help="Directory to extract media files to. Defaults to input filename with _media suffix. It will be created if it doesn't exist.",
+    ),
+):
+
+    result_path = convert_epub_to_html(input_epub, extract_media_dir=extract_media_dir)
+
     typer.echo(
-        f"Successfully converted '{input_epub}' to '{output_html}' with media extracted to '{extract_media_dir}'"
+        f"Successfully converted '{input_epub}' to '{result_path}' with media extracted to '{extract_media_dir}'"
     )
 
 

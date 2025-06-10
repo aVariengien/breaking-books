@@ -346,7 +346,10 @@ def combine(
 
     # Get PDF files from input directory
     pdf_files = get_pdf_files(input_dir)
+    return combine_pdfs(pdf_files, output_file, four_up, scale_a4)
 
+
+def combine_pdfs(pdf_files: list[Path], output_file: Path, four_up: bool, scale_a4: bool) -> Path:
     # Create PDF writer
     writer = PdfWriter()
 
