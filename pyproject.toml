@@ -14,9 +14,11 @@ dependencies = [
     "joblib>=1.5.0",
     "litellm>=1.70.2",
     "markdown>=3.8",
+    "pydantic>=2.11.4",
     "pypdf>=5.5.0",
     "runware>=0.4.10",
     "streamlit>=1.45.1",
+    "streamlit-pdf-viewer>=0.0.24",
     "typer>=0.15.4",
     "weasyprint>=65.1",
 ]
