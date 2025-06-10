@@ -1,14 +1,10 @@
 import asyncio
-import base64
 import json
-import os
 from pathlib import Path
 
-import aiohttp
-from litellm import acompletion, completion
 from pydantic import BaseModel, Field
-from runware import IImageInference, Runware
 
+from api_cache import acompletion, completion, generate_single_image_async
 from prompts.card_creation import (
     CARD_EXTRACTION_PROMPT,
     EXAMPLE_EXTRACTION_PROMPT,
@@ -198,17 +194,17 @@ async def generate_images_for_game(
     return cards, book_structure
 
 
-def save_game_data(cards: CardSet, book_structure: BookStructure, filename: str):
+def save_game_data(cards: CardSet, book_structure: BookStructure, filename: Path):
     """Save cards as JSONL and book structure as JSON."""
     # Save cards with images as JSONL
-    cards_file = Path(f"{filename}.jsonl")
+    cards_file = filename.with_suffix(".jsonl")
     with cards_file.open("w") as f:
         for card in cards.card_definitions:
             card_dict = card.model_dump()
             f.write(json.dumps(card_dict) + "\n")
 
     # Save book structure as JSON
-    structure_file = Path(f"book_structure_{filename}.json")
+    structure_file = filename.with_suffix(".json")
     with structure_file.open("w") as f:
         json.dump(book_structure.model_dump(), f, indent=2)
 
@@ -308,34 +304,5 @@ def _add_visual_styles_to_cards(cards: CardSet):
 
 async def _generate_images_async(prompts: list[str], image_size: tuple[int, int]) -> list[str]:
     """Generate images for a list of prompts using Runware API."""
-    tasks = [
-        _generate_single_image_async(prompt, image_size, i) for i, prompt in enumerate(prompts)
-    ]
+    tasks = [generate_single_image_async(prompt, image_size, RUNWARE_MODEL) for prompt in prompts]
     return await asyncio.gather(*tasks)
-
-
-async def _generate_single_image_async(prompt: str, image_size: tuple[int, int], index: int) -> str:
-    """Generate a single image using Runware API."""
-    runware = Runware(api_key=os.getenv("RUNWARE_API_KEY"))
-    await runware.connect()
-
-    request_image = IImageInference(
-        positivePrompt=prompt,
-        model=RUNWARE_MODEL,
-        numberResults=1,
-        negativePrompt="Text, label, diagram, blurry, low quality, distorted",
-        height=image_size[0],
-        width=image_size[1],
-    )
-
-    images = await runware.imageInference(requestImage=request_image)
-    print(f"Generated image {index}")
-
-    if images:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(images[0].imageURL) as response:
-                if response.status == 200:
-                    content = await response.read()
-                    return base64.b64encode(content).decode("utf-8")
-
-    return "No image generated"
