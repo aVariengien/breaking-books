@@ -67,7 +67,7 @@ class Section(BaseModel):
         description="A detailed description of a landscape that illustrates the section's themes or mood",
     )
     chapters: list[Chapter]
-    image_b64: str = Field(..., description="Keep this field empty, for further processing.")
+    image_base64: str = Field(..., description="Keep this field empty, for further processing.")
 
 
 class BookStructure(BaseModel):
@@ -80,7 +80,10 @@ class Card(BaseModel):
     illustration: str
     quotes: list[str]
     card_type: str
-    card_color: str = Field(..., description="Keep this field empty, for further processing.")
+    card_color: str = Field(..., description="The html hex code of the color like #1A2B3C")
+    image_base64: str | None = Field(
+        None, description="Keep this field empty, for further processing."
+    )
 
 
 class CardSet(BaseModel):
@@ -156,7 +159,7 @@ async def generate_cards_from_sections(
     for section_idx, card_set in enumerate(section_card_sets):
         section_color = book_structure.sections[section_idx].section_color
         for card in card_set.card_definitions:
-            card.card_color = section_color
+            card.card_color = section_color.html_color
             all_cards.card_definitions.append(card)
         print(f"Section {section_idx} processed with {len(card_set.card_definitions)} cards")
 
@@ -182,11 +185,11 @@ async def generate_images_for_game(
     )
 
     # Assign images to cards and sections
-    for card, image_b64 in zip(cards.card_definitions, card_images):
-        card.illustration = image_b64
+    for card, image_base64 in zip(cards.card_definitions, card_images):
+        card.image_base64 = image_base64
 
-    for section, image_b64 in zip(book_structure.sections, landscape_images):
-        section.image_b64 = image_b64
+    for section, image_base64 in zip(book_structure.sections, landscape_images):
+        section.image_base64 = image_base64
 
     print(
         f"Generated {len(cards.card_definitions)} card images and {len(book_structure.sections)} landscape images"

@@ -142,8 +142,8 @@
             <div class="section-header">
                 <h2 class="section-title">{{ section.section_name }}</h2>
                 <div class="section-image">
-                    {% if section.image_b64 %}
-                    <img src="data:image/png;base64,{{ section.image_b64 }}" alt="Section image">
+                    {% if section.image_base64 %}
+                    <img src="data:image/png;base64,{{ section.image_base64 }}" alt="Section image">
                     {% else %}
                     <div class="image-placeholder"></div>
                     {% endif %}
