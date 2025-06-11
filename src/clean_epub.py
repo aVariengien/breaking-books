@@ -10,6 +10,49 @@ app = typer.Typer()
 LUA_FILTER_FILENAME = "remove_footnotes.lua"
 
 
+def normalize_image_paths(html_content: str) -> str:
+    """
+    Normalize image paths to be deterministic (just filenames, no directory paths).
+
+    Pandoc generates absolute paths based on where files are processed, causing the same
+    EPUB to produce different HTML when processed from different locations. This function
+    strips all directory paths, keeping only filenames for deterministic output.
+    """
+
+    def replace_img_src(match):
+        # Extract just the filename from the path
+        full_path = match.group(1)
+        filename = Path(full_path).name
+        return f'src="{filename}"'
+
+    # Replace src="any/path/to/image.ext" with src="image.ext"
+    # Handles both forward and backslashes for cross-platform compatibility
+    pattern = r'src="([^"]*[/\\])?([^"]*\.(png|jpg|jpeg|gif|svg|webp))"'
+    return re.sub(pattern, r'src="\2"', html_content, flags=re.IGNORECASE)
+
+
+def normalize_img_tag_whitespace(html_content: str) -> str:
+    """
+    Normalize whitespace around img tags to ensure deterministic formatting.
+
+    Pandoc can produce different whitespace/line breaks around <img> tags depending
+    on input file paths length. This causes the same EPUB to generate
+    different HTML formatting, breaking determinism used for caching. We normalize all whitespace
+    within img tags to single spaces.
+    """
+    # Pattern to match img tags with any amount of whitespace/newlines
+    pattern = r"<img\s+([^>]*?)>"
+
+    def replace_img_tag(match):
+        # Get all attributes and normalize whitespace between them
+        attrs = match.group(1)
+        # Replace any sequence of whitespace (including newlines) with single spaces
+        attrs = re.sub(r"\s+", " ", attrs.strip())
+        return f"<img {attrs}>"
+
+    return re.sub(pattern, replace_img_tag, html_content, flags=re.DOTALL)
+
+
 def add_unique_ids(html_content: str) -> str:
     """Add unique IDs to all HTML elements."""
     id_counter = 0
@@ -69,9 +112,21 @@ def convert_epub_to_html(
 
     subprocess.run(pandoc_command, check=True, text=True)
 
-    # Add unique IDs to HTML elements
+    # Post-process the HTML to ensure deterministic output
+    # Order matters: normalize content first, then add IDs
     html_content = output_html.read_text(encoding="utf-8")
+
+    # Step 1: Fix directory-dependent image paths from pandoc
+    # Pandoc generates different absolute paths based on processing location
+    html_content = normalize_image_paths(html_content)
+
+    # Step 2: Remove extra whitespace from pandoc, that comes when longer file
+    # names are used (it splits lines differently)
+    html_content = normalize_img_tag_whitespace(html_content)
+
+    # Step 3: Add unique IDs to be able to reference specific elements
     modified_html = add_unique_ids(html_content)
+
     output_html.write_text(modified_html, encoding="utf-8")
 
     return output_html
