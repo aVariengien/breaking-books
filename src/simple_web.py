@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import tempfile
 from pathlib import Path
@@ -5,6 +6,7 @@ from pathlib import Path
 import streamlit as st
 from dotenv import load_dotenv
 from pydantic import BaseModel
+from streamlit_pdf_viewer import pdf_viewer
 
 from src.book_to_cards import (
     CardSet,
@@ -13,9 +15,7 @@ from src.book_to_cards import (
     generate_images_for_game,
     save_game_data,
 )
-
-# Import our pipeline functions
-from src.clean_epub import convert_epub_to_html
+from src.clean_epub import convert_epub_to_html, convert_html_to_clean_html
 from src.pdf_combiner import combine_pdfs
 from src.process_cards import generate_cards, generate_section_cards, generate_toc
 
@@ -45,8 +45,8 @@ def configure_phase(state: State):
     st.header("📚 Configure Your Book Game")
 
     uploaded_file = st.file_uploader(
-        "Upload the EPUB of a book",
-        type=["epub"],
+        "Upload the EPUB or HTML of a book",
+        type=["epub", "html"],
     )
     if uploaded_file:
         st.success(f"✅ Uploaded: {uploaded_file.name} ({uploaded_file.size:,} bytes)")
@@ -107,7 +107,7 @@ class Stdout2Streamlit:
         pass
 
 
-def processing_phase(state: State):
+async def processing_phase(state: State):
     """Phase 2: Execute all processing steps"""
     st.header("⚡ Processing Your Book")
 
@@ -121,18 +121,27 @@ def processing_phase(state: State):
         with Stdout2Streamlit():
 
             print("Converting epub to html")
-            cleaned_html = convert_epub_to_html(input_path)
+            if input_path.suffix == ".epub":
+                cleaned_html_path = convert_epub_to_html(input_path)
+                cleaned_html = cleaned_html_path.read_text(encoding="utf-8")
+            elif input_path.suffix == ".html":
+                cleaned_html = convert_html_to_clean_html(input_path.read_text(encoding="utf-8"))
+            else:
+                raise ValueError(f"Unsupported file type: {input_path.suffix}")
+
             print("Analyzing book structure")
-            structure = analyze_book_structure(cleaned_html.read_text())
+            structure = analyze_book_structure(cleaned_html)
 
             if not state.toc_only:
                 print("Generating cards")
-                cards = generate_cards_from_sections(cleaned_html, structure, state.total_cards)
+                cards = await generate_cards_from_sections(
+                    cleaned_html, structure, state.total_cards
+                )
             else:
                 cards = CardSet(card_definitions=[])
 
             if state.generate_images:
-                cards, structure = generate_images_for_game(cards, structure)
+                cards, structure = await generate_images_for_game(cards, structure)
 
             cards_file, structure_file = save_game_data(
                 cards, structure, state.work_dir / f"{state.input_file.stem}_game"
@@ -158,12 +167,18 @@ def results_phase(state: State):
     """Phase 3: Show results and downloads"""
     st.header("🎉 Your Game is Ready!")
 
-    st.download_button(
-        label="Download cards to print",
-        data=state.output_file.read_bytes(),
-        file_name=state.output_file.name,
-        mime="application/pdf",
-    )
+    dl_col, pdf_col = st.columns([1, 4])
+
+    with dl_col:
+        st.download_button(
+            label="Download PDF to print",
+            data=state.output_file.read_bytes(),
+            file_name=state.output_file.name,
+            mime="application/pdf",
+        )
+
+    with pdf_col:
+        pdf_viewer(state.output_file, annotations=[])
 
 
 def main():
@@ -175,10 +190,9 @@ def main():
         st.header("ℹ️ How it Works")
         st.markdown(
             """
-        1. **Upload** an EPUB or HTML book
-        2. **Configure** your game options
-        3. **Watch** the AI process your book
-        4. **Download** your complete game!
+        1. **Upload** an EPUB and **configure** your game
+        2. **Watch** the AI process your book
+        3. **Download** your complete game!
         """
         )
 
@@ -186,10 +200,15 @@ def main():
     state = st.session_state.setdefault("state", State())
     st.sidebar.write(state)
 
+    # Button to go back to configure phase
+    if st.sidebar.button("🔄 Start again", use_container_width=True):
+        state.phase = "configure"
+        st.rerun()
+
     if state.phase == "configure":
         configure_phase(state)
     elif state.phase == "processing":
-        processing_phase(state)
+        asyncio.run(processing_phase(state))
     elif state.phase == "results":
         results_phase(state)
 

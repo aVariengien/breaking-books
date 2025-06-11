@@ -23,6 +23,8 @@ from runware import IImageInference, Runware
 CACHE_DIR = Path("cache/api_responses")
 DISABLE_CACHE = os.getenv("DISABLE_API_CACHE", "false").lower() == "true"
 
+# No global client - use separate connections for parallel processing
+
 
 def _ensure_cache_dir():
     """Ensure cache directory exists."""
@@ -117,7 +119,7 @@ async def generate_single_image_async(
     if cached_data is not None:
         return cached_data["output"]
 
-    # Make real API call
+    # Make real API call with dedicated connection for parallel processing
     runware = Runware(api_key=os.getenv("RUNWARE_API_KEY"))
     await runware.connect()
 

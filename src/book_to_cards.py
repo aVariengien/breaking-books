@@ -1,5 +1,6 @@
 import asyncio
 import json
+import warnings
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -222,6 +223,11 @@ async def generate_section_cards_async(section_text: str, num_cards: int) -> Car
     concept_cards = int(num_cards * CONCEPT_CARD_RATIO)
     example_cards = num_cards - concept_cards
 
+    if concept_cards < 2 or example_cards < 2:
+        raise ValueError(
+            f"Each section must have at least 2 concept and 2 example cards, it has {concept_cards} concept cards and {example_cards} example cards"
+        )
+
     concept_prompt = CARD_EXTRACTION_PROMPT.format(NB_CARD=concept_cards, BOOK_SECTION=section_text)
 
     example_prompt = EXAMPLE_EXTRACTION_PROMPT.format(
@@ -247,6 +253,18 @@ async def generate_section_cards_async(section_text: str, num_cards: int) -> Car
     # Parse and combine card sets
     concept_cards = CardSet.model_validate_json(concept_response.choices[0].message.content)
     example_cards = CardSet.model_validate_json(example_response.choices[0].message.content)
+
+    if len(concept_cards.card_definitions) > concept_cards:
+        del concept_cards.card_definitions[concept_cards:]
+        warnings.warn(
+            f"Concept cards were generated in excess of the expected number of cards, {len(concept_cards.card_definitions)} cards were generated, but {concept_cards} were expected"
+        )
+
+    if len(example_cards.card_definitions) > example_cards:
+        del example_cards.card_definitions[example_cards:]
+        warnings.warn(
+            f"Example cards were generated in excess of the expected number of cards, {len(example_cards.card_definitions)} cards were generated, but {example_cards} were expected"
+        )
 
     concept_cards.card_definitions.extend(example_cards.card_definitions)
     return concept_cards

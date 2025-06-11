@@ -135,27 +135,34 @@ def convert_epub_to_html(
     subprocess.run(pandoc_command, check=True, text=True)
 
     # Post-process the HTML to ensure deterministic output
-    # Order matters: normalize content first, then add IDs
     html_content = output_html.read_text(encoding="utf-8")
+    html_content = convert_html_to_clean_html(html_content)
+    output_html.write_text(html_content, encoding="utf-8")
+
+    return output_html
+
+
+def convert_html_to_clean_html(html: str) -> str:
+    """
+    Clean an HTML file, removing footnotes, id/hrefs, adding unique IDs to all HTML elements.
+    """
 
     # Step 1: Fix directory-dependent image paths from pandoc
     # Pandoc generates different absolute paths based on processing location
-    html_content = normalize_image_paths(html_content)
+    html = normalize_image_paths(html)
 
     # Step 2: Remove extra whitespace from pandoc, that comes when longer file
     # names are used (it splits lines differently)
-    html_content = normalize_img_tag_whitespace(html_content)
+    html = normalize_img_tag_whitespace(html)
 
     # Step 3: Remove empty spans, href and id attributes -> less tokens
-    html_content = remove_empty_spans(html_content)
-    html_content = remove_href_and_id_attributes(html_content)
+    html = remove_empty_spans(html)
+    html = remove_href_and_id_attributes(html)
 
     # Step 4: Add unique IDs to be able to reference specific elements
-    modified_html = add_unique_ids(html_content)
+    html = add_unique_ids(html)
 
-    output_html.write_text(modified_html, encoding="utf-8")
-
-    return output_html
+    return html
 
 
 @app.command()
