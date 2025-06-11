@@ -53,6 +53,28 @@ def normalize_img_tag_whitespace(html_content: str) -> str:
     return re.sub(pattern, replace_img_tag, html_content, flags=re.DOTALL)
 
 
+def remove_empty_spans(html_content: str) -> str:
+    """
+    Remove empty span tags that contain no text content.
+
+    These are often anchor links or references from EPUB that clutter the HTML.
+    Handles spans with any attributes (including multiple id attributes).
+    """
+    # Match span tags that contain only whitespace (or nothing) between opening and closing tags
+    # This handles spans with any attributes, including malformed ones with duplicate ids
+    pattern = r"<span[^>]*>\s*</span>"
+    return re.sub(pattern, "", html_content, flags=re.IGNORECASE)
+
+
+def remove_href_and_id_attributes(html_content: str) -> str:
+    """
+    Remove href and id attributes from all elements.
+    """
+    # [\s\n]+ -> one or more whitespace or newlines before
+    pattern = r'[\s\n]+(href|id)="[^"]*"'
+    return re.sub(pattern, "", html_content, flags=re.IGNORECASE)
+
+
 def add_unique_ids(html_content: str) -> str:
     """Add unique IDs to all HTML elements."""
     id_counter = 0
@@ -124,7 +146,11 @@ def convert_epub_to_html(
     # names are used (it splits lines differently)
     html_content = normalize_img_tag_whitespace(html_content)
 
-    # Step 3: Add unique IDs to be able to reference specific elements
+    # Step 3: Remove empty spans, href and id attributes -> less tokens
+    html_content = remove_empty_spans(html_content)
+    html_content = remove_href_and_id_attributes(html_content)
+
+    # Step 4: Add unique IDs to be able to reference specific elements
     modified_html = add_unique_ids(html_content)
 
     output_html.write_text(modified_html, encoding="utf-8")
