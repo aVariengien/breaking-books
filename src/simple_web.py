@@ -42,7 +42,7 @@ class State(BaseModel):
 
 def configure_phase(state: State):
     """Phase 1: Upload file and configure all options"""
-    st.header("📚 Configure Your Book Game")
+    st.header("Upload & Configure")
 
     uploaded_file = st.file_uploader(
         "Upload the EPUB or HTML of a book",
@@ -182,25 +182,47 @@ def results_phase(state: State):
 
 
 def main():
-    st.title("📚 Book to Game Converter")
-    st.markdown("Transform your favorite books into physical card games! 🎮")
+    st.title("📚 Breaking Books")
+    st.markdown(
+        "Welcome! This tool turns any non-fiction book into a collaborative, hands-on learning game."
+    )
 
     # Sidebar
     with st.sidebar:
-        st.header("ℹ️ How it Works")
+        st.header("About Breaking Books")
+        st.markdown(
+            "This tool transforms the solitary act of reading into an active, shared experience. "
+            "The goal is to create a space for people to learn, build shared understanding, and connect."
+        )
+
+        st.header("🎲 How to Play")
         st.markdown(
             """
-        1. **Upload** an EPUB and **configure** your game
-        2. **Watch** the AI process your book
-        3. **Download** your complete game!
-        """
+            **1. 👋 Welcome & Setup (10-15 mins)**
+            - Gather your group (3-5 people is ideal).
+            - Start with a welcome roundup: Why is everyone here? What's your interest in the book?
+            - Designate a timekeeper.
+
+            **2. 🗺️ The Landscape (5 mins)**
+            - Each player chooses a book section they will "guide."
+            - Everyone takes 5 minutes to read the enriched Table of Contents for *their chosen section*.
+
+            **3. 🔄 Playing the Sections (The Core Loop)**
+            - The section's guide reads its "Section Card" aloud.
+            - Distribute all cards for that section.
+            - Players discuss and place their cards on the table, drawing connections.
+            - At the end of the section, the guide tells the story in **one minute sharp**.
+
+            **4. 🏆 The Grand Finale**
+            - After the final section, the most courageous person tells the story of the *entire book*.
+            - Remember to take a picture of your beautiful creation! ✨
+            """
         )
+
+        st.header("⚙️ App Controls")
 
     # Route to current phase
     state = st.session_state.setdefault("state", State())
-    st.sidebar.write(state)
-
-    # Button to go back to configure phase
     if st.sidebar.button("🔄 Start again", use_container_width=True):
         state.phase = "configure"
         st.rerun()
