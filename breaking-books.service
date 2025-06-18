@@ -1,0 +1,10 @@
+[Unit]
+Description=Breaking Books: A Streamlit app to analyze books.
+After=network.target
+
+[Service]
+WorkingDirectory=/srv/breaking-books
+ExecStart=/usr/bin/make -C /srv/breaking-books run
+
+[Install]
+WantedBy=multi-user.target
