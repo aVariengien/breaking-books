@@ -24,7 +24,10 @@ CONCEPT_CARD_RATIO = 0.7  # 70% concept cards, 30% example cards
 # Data models
 class SectionColor(BaseModel):
     name: str = Field(..., description="The name of the color assigned to this section")
-    html_color: str = Field(..., description="The html hex code of the color like #1A2B3C")
+    html_color: str = Field(
+        ...,
+        description="The html hex code of the color like #1A2B3C. Ensure the sections colors are contrasting and not too similar to each other.",
+    )
 
 
 class KeyPassage(BaseModel):

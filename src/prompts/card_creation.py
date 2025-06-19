@@ -44,7 +44,7 @@ The book is in html format with html tags marked by tag ids (e.g. id="tag-230") 
 Important guidelines:
 * Extract VERBATIM quotes for all passages, excerpts, and key quotes
 * Use mardown formatting to add emphasis like bold and italic to the section descriptions
-* Choose section colors that metaphorically align with the emotional tone or themes
+* Choose section colors that align with the emotional tone or themes. Make sure the colors are contrasting and not too similar to each other.
 * Include 1-3 key passages that are around half a page long that best represent the section's themes
 * Your landscape descriptions should be detailed and evocative, capturing the section's emotional essence
 * Identify 1-3 key quotes per chapter that highlight important moments, revelations, or character development
