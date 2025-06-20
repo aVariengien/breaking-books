@@ -226,10 +226,15 @@ async def generate_section_cards_async(section_text: str, num_cards: int) -> Car
     num_concept_cards = int(num_cards * CONCEPT_CARD_RATIO)
     num_example_cards = num_cards - num_concept_cards
 
-    if num_concept_cards < 2 or num_example_cards < 2:
-        raise ValueError(
-            f"Each section must have at least 2 concept and 2 example cards, it has {num_concept_cards} concept cards and {num_example_cards} example cards"
-        )
+    if num_concept_cards < 2:
+        warnings.warn(f"Section has {num_concept_cards} concept cards, bumping to minimum of 2")
+        num_concept_cards = 2
+        num_example_cards = num_cards - num_concept_cards
+
+    if num_example_cards < 2:
+        warnings.warn(f"Section has {num_example_cards} example cards, bumping to minimum of 2")
+        num_example_cards = 2
+        num_concept_cards = max(2, num_cards - num_example_cards)
 
     concept_prompt = CARD_EXTRACTION_PROMPT.format(
         NB_CARD=num_concept_cards, BOOK_SECTION=section_text

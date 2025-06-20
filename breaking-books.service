@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=/srv/breaking-books
-ExecStart=/usr/bin/make -C /srv/breaking-books run
+ExecStart=/usr/bin/make run
 
 [Install]
 WantedBy=multi-user.target
