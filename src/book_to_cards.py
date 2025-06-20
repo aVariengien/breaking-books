@@ -265,16 +265,16 @@ async def generate_section_cards_async(section_text: str, num_cards: int) -> Car
     example_cards = CardSet.model_validate_json(example_response.choices[0].message.content)
 
     if len(concept_cards.card_definitions) > num_concept_cards:
-        del concept_cards.card_definitions[num_concept_cards:]
         warnings.warn(
             f"Concept cards were generated in excess of the expected number of cards, {len(concept_cards.card_definitions)} cards were generated, but {num_concept_cards} were expected"
         )
+        del concept_cards.card_definitions[num_concept_cards:]
 
     if len(example_cards.card_definitions) > num_example_cards:
-        del example_cards.card_definitions[num_example_cards:]
         warnings.warn(
             f"Example cards were generated in excess of the expected number of cards, {len(example_cards.card_definitions)} cards were generated, but {num_example_cards} were expected"
         )
+        del example_cards.card_definitions[num_example_cards:]
 
     concept_cards.card_definitions.extend(example_cards.card_definitions)
     return concept_cards
