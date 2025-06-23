@@ -2,7 +2,7 @@
 
 Turn any book into a collaborative, hands-on learning game.
 
-*[Image: A photo of a group of people actively playing the game around a table, with cards spread out, talking and gesturing.]*
+![A celebratory selfie of four friends after a successful breaking books session. In Ghibli art style, they are gathered around a table covered in their work, with scattered papers and images, all smiling and giving thumbs-up.](./images/first-game-ghibli.webp)
 
 ## 🌍 A New Way to Read Together
 
@@ -54,7 +54,7 @@ Success isn't winning; it's a great conversation and a new, shared perspective.
 
 ### The Easy Way (Hosted App)
 
-You can create your own game for free at **[breaking-books.therandom.space](http://breaking-books.therandom.space)**. (soon available)
+You can create your own game for free at **[breaking-books.therandom.space](https://breaking-books.therandom.space)**.
 
 All you need is an EPUB file of a non-fiction book.
 
@@ -64,7 +64,7 @@ All you need is an EPUB file of a non-fiction book.
 <summary>Click to expand</summary>
 
 ### Setup and Dependencies
-Requires [uv](https://docs.astral.sh/uv/install.sh/) for package management.
+Requires [uv](https://docs.astral.sh/uv/getting-started/installation/) for package management.
 
 To run the application locally, you will need API keys from Google (for Gemini) and Runware. Set them as environment variables:
 ```
@@ -74,13 +74,11 @@ export RUNWARE_API_KEY="your-runware-api-key"
 
 Then, install the dependencies:
 ```bash
-# Install dependencies
 uv sync
 ```
 
-### Running the Application
+### Running the Web Application
 ```bash
-# Start the web viewer
 uv run streamlit run src/simple_web.py
 ```
 
@@ -95,4 +93,3 @@ If you play a game, we would love to hear your story, feedback, or ideas. Please
 ### Acknowledgements
 
 - A special thank you to **Nia** and **Felix** for playtesting the very first game.
-- A project by **Diego** and **Alexandre**.
