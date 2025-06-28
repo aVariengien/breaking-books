@@ -19,6 +19,7 @@ The tool generates a single printable PDF containing the game materials:
 1.  An **Enriched Table of Contents** with chapter summaries and key quotes, serving as your map for the journey.
 2.  A deck of **Illustrated Cards**, each representing a core concept or a telling example from the book. The visuals help anchor the ideas, while quotes provide a direct line to the author's voice.
 
+![A shot of the completed "visual map" of cards laid out on a paper-covered table, with hand-drawn lines and notes connecting them.](./images/table-at-the-end.webp)
 *[Image: A close-up shot of a few beautifully designed cards next to the enriched table of contents page.]*
 
 ### A Simple Guide to Your First Game
@@ -45,8 +46,6 @@ The game proceeds section by section. For each one:
 -   After the final section, the most courageous person tells the story of the *entire book* using the complete visual map.
 -   Leave plenty of time for the open discussion that will follow!
 -   Remember to take a picture of your beautiful creation! ✨
-
-![A shot of the completed "visual map" of cards laid out on a paper-covered table, with hand-drawn lines and notes connecting them.](./images/table-at-the-end.webp)
 
 Success isn't winning; it's a great conversation and a new, shared perspective.
 
