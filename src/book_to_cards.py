@@ -14,7 +14,7 @@ from prompts.card_creation import (
 )
 
 # Configuration constants
-MODEL_NAME = "gemini/gemini-2.5-flash-preview-05-20"
+MODEL_NAME = "gemini/gemini-2.5-flash"
 CARD_IMAGE_SIZE = (768, 384)
 LANDSCAPE_IMAGE_SIZE = (384, 640)
 RUNWARE_MODEL = "runware:101@1"
