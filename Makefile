@@ -4,7 +4,7 @@ PORT := 9201
 SERVICE_NAME := breaking-books
 
 run:
-	uv run streamlit run --server.port $(PORT) src/simple_web.py
+	uv run --frozen streamlit run --server.port $(PORT) src/simple_web.py
 
 deploy:
 	git ls-files | rsync -avzP --files-from=- . pine:/srv/$(SERVICE_NAME)
