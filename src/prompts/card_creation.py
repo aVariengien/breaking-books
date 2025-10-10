@@ -37,7 +37,7 @@ create_cards_declaration = {
 }
 
 
-MAXI_PROMPT = """You are a literary analyst with expertise in organizing complex texts into meaningful 3 logical sections based on thematic elements, narrative arcs, or major plot developments. I need you to analyze the book I provide and break it down into coherent thematic sections.
+MAXI_PROMPT = """You are a literary analyst with expertise in organizing complex texts into 3 meaningful logical sections based on thematic elements, narrative arcs, or major plot developments. I need you to analyze the book I provide and break it down into coherent thematic sections.
 
 The book is in html format with html tags marked by tag ids (e.g. id="tag-230") that marks the position in the text. You will be asked to give these tag values to mark the end and the beginning of a section or excerpt.
 
