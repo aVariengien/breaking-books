@@ -116,7 +116,6 @@ def analyze_book_structure(book_html: str) -> BookStructure:
         response_format=BookStructure,
         reasoning_effort="medium",
     )
-    print(result.choices[0].message.content)
 
     book_structure = BookStructure.model_validate_json(result.choices[0].message.content)
 
@@ -172,7 +171,6 @@ async def generate_cards_from_sections(
             card.card_color = section_color.html_color
             all_cards.card_definitions.append(card)
         print(f"Section {section_idx} processed with {len(card_set.card_definitions)} cards")
-    print(all_cards.card_definitions)
     return all_cards
 
 
