@@ -1,6 +1,6 @@
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v6.0.0
     hooks:
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
@@ -15,17 +15,17 @@ repos:
 
 
 -   repo: https://github.com/psf/black
-    rev: 25.1.0
+    rev: 25.9.0
     hooks:
     -   id: black
 
 -   repo: https://github.com/pycqa/isort
-    rev: 6.0.1
+    rev: 6.1.0
     hooks:
     -   id: isort
 
 -   repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.11.10
+    rev: v0.13.3
     hooks:
     -   id: ruff
         args: [--fix]
