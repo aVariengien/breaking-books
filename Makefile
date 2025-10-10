@@ -8,6 +8,6 @@ run:
 
 deploy:
 	git ls-files | rsync -avzP --files-from=- . pine:/srv/$(SERVICE_NAME)
-	rsync -avzP .env pine:/srv/$(SERVICE_NAME)/
+	rsync -avzP .env.prod pine:/srv/$(SERVICE_NAME)/
 	rsync -avzP $(SERVICE_NAME).service pine:/etc/systemd/system/
 	ssh pine "systemctl daemon-reload && systemctl restart $(SERVICE_NAME) && journalctl -u $(SERVICE_NAME) -f"
