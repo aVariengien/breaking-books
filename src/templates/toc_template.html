@@ -137,6 +137,10 @@
 </head>
 <body>
     <div class="toc-container">
+        <h1 class="title">{{ title }}</h1>
+        <h2 class="author">{{ author }}</h2>
+        <h3 class="year">{{ year }}</h3>
+        <hr>
         {% for section in sections %}
         <div class="section" style="--section-color: {{ section.section_color.html_color }}">
             <div class="section-header">

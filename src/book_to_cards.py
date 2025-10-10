@@ -48,7 +48,7 @@ class Chapter(BaseModel):
         ...,
         description="The name or title of the chapter, add the name as it is in the table of content",
     )
-    chapter_comment: str = Field(..., description="A brief comment or summary about the chapter")
+    chapter_comment: str = Field(..., description="One sentence summary of the chapter.")
     chapter_start_tag: str = Field(
         ..., description="The tag id value of the start of the chapter. Example value: 'tag-342'."
     )
@@ -59,29 +59,33 @@ class Chapter(BaseModel):
 
 
 class Section(BaseModel):
-    section_name: str = Field(..., description="The name of the section from the book")
+    section_name: str = Field(..., description="The name of the section. Include the section number, e.g. Section 1: ..., etc.")
     section_introduction: str = Field(
         ...,
-        description="Introduction to the key questions of this section and how it connects to the previous section by answering the key questions from that section",
+        description="Introduction to the key questions of this section and how it connects to the previous section. No more than 3 sentences.",
     )
     section_color: SectionColor
     key_passages: list[KeyPassage]
     visual_landscape_description: str = Field(
         ...,
-        description="A detailed description of a landscape that illustrates the section's themes or mood",
+        description="A detailed description of a landscape that illustrates the section's themes or mood. The description should always be in English.",
     )
     chapters: list[Chapter]
     image_base64: str = Field(..., description="Keep this field empty, for further processing.")
 
 
 class BookStructure(BaseModel):
+    language: str = Field(..., description="The language of the book, and the language of the responses.")
+    title: str = Field(..., description="The title of the book.")
+    author: str = Field(..., description="The author of the book.")
+    year: str = Field(..., description="The date of the book. Leave it blank if you don't know the date. Format: YYYY")
     sections: list[Section]
 
 
 class Card(BaseModel):
     title: str
-    description: str
-    illustration: str
+    description: str = Field(..., description="The description of the card, no more than 2 sentences.")
+    illustration: str = Field(..., description="The description of the illustration, should always be in English.")
     quotes: list[str]
     card_type: str
     card_color: str = Field(..., description="The html hex code of the color like #1A2B3C")
@@ -91,6 +95,7 @@ class Card(BaseModel):
 
 
 class CardSet(BaseModel):
+    language: str = Field(..., description="The language of the book, and the language of the responses.")
     card_definitions: list[Card]
 
 
@@ -111,6 +116,7 @@ def analyze_book_structure(book_html: str) -> BookStructure:
         response_format=BookStructure,
         reasoning_effort="medium",
     )
+    print(result.choices[0].message.content)
 
     book_structure = BookStructure.model_validate_json(result.choices[0].message.content)
 
@@ -159,14 +165,14 @@ async def generate_cards_from_sections(
     )
 
     # Combine all cards and assign section colors
-    all_cards = CardSet(card_definitions=[])
+    all_cards = CardSet(card_definitions=[], language=book_structure.language)
     for section_idx, card_set in enumerate(section_card_sets):
         section_color = book_structure.sections[section_idx].section_color
         for card in card_set.card_definitions:
             card.card_color = section_color.html_color
             all_cards.card_definitions.append(card)
         print(f"Section {section_idx} processed with {len(card_set.card_definitions)} cards")
-
+    print(all_cards.card_definitions)
     return all_cards
 
 

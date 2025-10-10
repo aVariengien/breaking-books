@@ -138,7 +138,7 @@ async def processing_phase(state: State):
                     cleaned_html, structure, state.total_cards
                 )
             else:
-                cards = CardSet(card_definitions=[])
+                cards = CardSet(card_definitions=[], language=structure.language)
 
             if state.generate_images:
                 cards, structure = await generate_images_for_game(cards, structure)

@@ -37,16 +37,17 @@ create_cards_declaration = {
 }
 
 
-MAXI_PROMPT = """You are a literary analyst with expertise in organizing complex texts into meaningful 2 to 4 logical sections based on thematic elements, narrative arcs, or major plot developments. I need you to analyze the book I provide and break it down into coherent thematic sections.
+MAXI_PROMPT = """You are a literary analyst with expertise in organizing complex texts into meaningful 3 logical sections based on thematic elements, narrative arcs, or major plot developments. I need you to analyze the book I provide and break it down into coherent thematic sections.
 
 The book is in html format with html tags marked by tag ids (e.g. id="tag-230") that marks the position in the text. You will be asked to give these tag values to mark the end and the beginning of a section or excerpt.
 
 Important guidelines:
+* ! Use the language of the book for all your responses, e.g. if the book is in French, use French for all your responses.
 * Extract VERBATIM quotes for all passages, excerpts, and key quotes
 * Use mardown formatting to add emphasis like bold and italic to the section descriptions
 * Choose section colors that align with the emotional tone or themes. Make sure the colors are contrasting and not too similar to each other.
 * Include 1-3 key passages that are around half a page long that best represent the section's themes
-* Your landscape descriptions should be detailed and evocative, capturing the section's emotional essence
+* Your landscape descriptions should always be in English. It should be detailed and evocative, capturing the section's emotional essence
 * Identify 1-3 key quotes per chapter that highlight important moments, revelations, or character development
 * Make sure section introductions clearly articulate the thematic questions being explored and how they connect to previous sections
 * Please maintain the exact JSON structure provided. This analysis will be used for creating a visual and thematic guide to the book.
@@ -62,10 +63,11 @@ You are reading a long section of a book. You role is to create {NB_CARD} Zettel
 Ensure the cards cover _all_ the content from this section. If I were to use the cards in a slide show to present the section to an audience, I could use the cards as a slide show to tell the complete story of the section without loosing much details.
 
 ## Guidelines:
+0. ! Use the language of the book for all your responses, e.g. if the book is in French, use French for all your responses.
 1. Each card should represent ONE distinct, atomic idea from the text
 2. Ensure cards collectively cover the COMPLETE content of the section
-3. Use clear, precise language in the descriptions. Make use of bold HTML <b>tags</b> for emphasis.
-4. Create simple, precise descriptions of PHOTOGRAPHIC illustration that gives understanding of the idea at first glance.
+3. Use clear, precise language in the descriptions (< 2 sentences). Make use of bold HTML <b>tags</b> for emphasis.
+4. Create simple, precise descriptions of PHOTOGRAPHIC illustration that gives understanding of the idea at first glance. The description should always be in English.
 5. The illustration should be of a scene or a situation that is representative of the idea, there should be NO LABEL, NO DIAGRAM and NO TEXT
 6. Extract 1 to 5 direct quotes that best exemplify each idea. Ensure quotes are full sentences that can be read as stand alone.
 7. Include ideas that are not directly named in the text but are present, scattered or diffused accross the text
@@ -85,9 +87,10 @@ Every card has a title, a description, a type, an illustration and an ensemble o
 Ensure the cards cover the most significant examples from this section. If I were to use these cards in a slide show to present the examples from the section to an audience, the cards would effectively showcase the practical applications and illustrations that the author uses to convey their points.
 
 ## Guidelines:
+0. ! Use the language of the book for all your responses, e.g. if the book is in French, use French for all your responses.
 1. Each card should represent ONE distinct example or case study from the text
 2. Focus on concrete examples rather than abstract concepts
-3. Use clear and concise descriptions. Make use of bold HTML <b>tags</b> to highlight key aspects of each example
+3. Use clear and concise descriptions (< 2 sentences). Make use of bold HTML <b>tags</b> for highlighting.
 4. Create simple, precise descriptions of PHOTOGRAPHIC illustration that visually represents the example
 5. The illustration should be of a scene or a situation that depicts the example
 6. Extract 1 to 5 direct quotes that present or elaborate on the example. Ensure quotes are full sentences that can be read as stand alone.
