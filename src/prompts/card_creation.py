@@ -42,7 +42,7 @@ MAXI_PROMPT = """You are a literary analyst with expertise in organizing complex
 The book is in html format with html tags marked by tag ids (e.g. id="tag-230") that marks the position in the text. You will be asked to give these tag values to mark the end and the beginning of a section or excerpt.
 
 Important guidelines:
-* ! Use the language of the book for all your responses, e.g. if the book is in French, use French for all your responses.
+* ! Use the language of the book for all your responses
 * Extract VERBATIM quotes for all passages, excerpts, and key quotes
 * Use mardown formatting to add emphasis like bold and italic to the section descriptions
 * Choose section colors that align with the emotional tone or themes. Make sure the colors are contrasting and not too similar to each other.
@@ -63,7 +63,7 @@ You are reading a long section of a book. You role is to create {NB_CARD} Zettel
 Ensure the cards cover _all_ the content from this section. If I were to use the cards in a slide show to present the section to an audience, I could use the cards as a slide show to tell the complete story of the section without loosing much details.
 
 ## Guidelines:
-0. ! Use the language of the book for all your responses, e.g. if the book is in French, use French for all your responses.
+0. ! Use the language of the book for all your responses
 1. Each card should represent ONE distinct, atomic idea from the text
 2. Ensure cards collectively cover the COMPLETE content of the section
 3. Use clear, precise language in the descriptions (< 2 sentences). Make use of bold HTML <b>tags</b> for emphasis.
@@ -87,7 +87,7 @@ Every card has a title, a description, a type, an illustration and an ensemble o
 Ensure the cards cover the most significant examples from this section. If I were to use these cards in a slide show to present the examples from the section to an audience, the cards would effectively showcase the practical applications and illustrations that the author uses to convey their points.
 
 ## Guidelines:
-0. ! Use the language of the book for all your responses, e.g. if the book is in French, use French for all your responses.
+0. ! Use the language of the book for all your responses
 1. Each card should represent ONE distinct example or case study from the text
 2. Focus on concrete examples rather than abstract concepts
 3. Use clear and concise descriptions (< 2 sentences). Make use of bold HTML <b>tags</b> for highlighting.
