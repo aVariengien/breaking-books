@@ -2,6 +2,7 @@ import asyncio
 import sys
 import tempfile
 from pathlib import Path
+from typing import Literal
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -36,6 +37,7 @@ class State(BaseModel):
     generate_images: bool = True
     toc_only: bool = False
     output_file: Path | None = None
+    card_format: Literal["A5", "A6"] = "A6"
 
     phase: str = "configure"
 
@@ -63,8 +65,18 @@ def configure_phase(state: State):
         state.total_cards = st.number_input(
             "Number of cards to generate",
             min_value=1,
-            value=40,
+            value=30,
             help="Total number of game cards to create",
+        )
+        formats = {
+            "A6": "A6 (recommended, 4 per page)",
+            "A5": "A5 (2 per page)",
+        }
+        state.card_format = st.radio(
+            "How big should the cards be?",
+            formats.keys(),
+            format_func=lambda x: formats[x],
+            horizontal=True,
         )
 
     state.generate_images = not st.checkbox(
@@ -155,7 +167,9 @@ async def processing_phase(state: State):
             state.output_file = state.input_file.with_name(
                 f"{state.input_file.stem}_game_to_print.pdf"
             )
-            combine_pdfs(pdf_paths, state.output_file, four_up=False, scale_a4=False)
+            combine_pdfs(
+                pdf_paths, state.output_file, four_up=state.card_format == "A6", scale_a4=False
+            )
 
         status.update(label="Book processed!", state="complete")
 
