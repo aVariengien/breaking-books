@@ -167,7 +167,7 @@
                 <div class="key-quotes">
                     <ul>
                         {% for quote in chapter.key_quotes %}
-                        <li>{{ quote }}</li>
+                        <li>{{ quote | safe }}</li>
                         {% endfor %}
                     </ul>
                 </div>
