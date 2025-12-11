@@ -1,0 +1,11 @@
+fly.toml
+.git/
+.env
+.envrc
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+cache/
+data/
