@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from streamlit_pdf_viewer import pdf_viewer
 
+from constants import MODEL_NAME
 from src.book_to_cards import (
     CardSet,
     analyze_book_structure,
@@ -235,11 +236,13 @@ def main():
 
         st.header("⚙️ App Controls")
 
-    # Route to current phase
-    state = st.session_state.setdefault("state", State())
-    if st.sidebar.button("🔄 Start again", use_container_width=True):
-        state.phase = "configure"
-        st.rerun()
+        # Route to current phase
+        state = st.session_state.setdefault("state", State())
+        if st.button("🔄 Start again", use_container_width=True):
+            state.phase = "configure"
+            st.rerun()
+
+        st.caption(f"LLM for card generation: {MODEL_NAME}")
 
     if state.phase == "configure":
         configure_phase(state)
