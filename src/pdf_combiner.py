@@ -5,25 +5,15 @@ import typer
 from pypdf import PageObject, PdfReader, PdfWriter
 from pypdf.errors import PdfReadError
 
-# Standard page sizes in points (1 point = 1/72 inch)
-# A4 Portrait: 210mm x 297mm
-A4_PORTRAIT_WIDTH = 595.276
-A4_PORTRAIT_HEIGHT = 841.890
-
-# A4 Landscape: 297mm x 210mm
-A4_LANDSCAPE_WIDTH = 841.890
-A4_LANDSCAPE_HEIGHT = 595.276
-
-# A5 Landscape: 210mm x 148mm (or 148.5mm for exact half of A4 width)
-A5_LANDSCAPE_WIDTH = 595.276  # Standard A5 landscape width (210mm)
-A5_LANDSCAPE_HEIGHT = 419.528  # Standard A5 landscape height (148mm)
-
-# A6 Landscape: 148mm x 105mm
-A6_LANDSCAPE_WIDTH = 419.528
-A6_LANDSCAPE_HEIGHT = 297.638
-
-# Tolerance for page size comparison
-SIZE_TOLERANCE = 5.0  # points
+from constants import (
+    A4_LANDSCAPE_HEIGHT,
+    A4_LANDSCAPE_WIDTH,
+    A4_PORTRAIT_HEIGHT,
+    A4_PORTRAIT_WIDTH,
+    A5_LANDSCAPE_HEIGHT,
+    A5_LANDSCAPE_WIDTH,
+    SIZE_TOLERANCE,
+)
 
 app = typer.Typer(help="Combines PDFs into printable layouts.")
 

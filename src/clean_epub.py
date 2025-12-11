@@ -4,10 +4,9 @@ from pathlib import Path
 
 import typer
 
+from constants import LUA_FILTER_FILENAME
+
 app = typer.Typer()
-
-
-LUA_FILTER_FILENAME = "remove_footnotes.lua"
 
 
 def normalize_image_paths(html_content: str) -> str:

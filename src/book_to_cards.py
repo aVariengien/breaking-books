@@ -6,19 +6,19 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from api_cache import acompletion, completion, generate_single_image_async
+from constants import (
+    CARD_IMAGE_SIZE,
+    CONCEPT_CARD_RATIO,
+    LANDSCAPE_IMAGE_SIZE,
+    MODEL_NAME,
+    RUNWARE_MODEL,
+)
 from prompts.card_creation import (
     CARD_EXTRACTION_PROMPT,
     EXAMPLE_EXTRACTION_PROMPT,
     MAXI_PROMPT,
     STYLE_PROMPT,
 )
-
-# Configuration constants
-MODEL_NAME = "gemini/gemini-2.5-flash"
-CARD_IMAGE_SIZE = (768, 384)
-LANDSCAPE_IMAGE_SIZE = (384, 640)
-RUNWARE_MODEL = "runware:101@1"
-CONCEPT_CARD_RATIO = 0.7  # 70% concept cards, 30% example cards
 
 
 # Data models
@@ -59,7 +59,10 @@ class Chapter(BaseModel):
 
 
 class Section(BaseModel):
-    section_name: str = Field(..., description="The name of the section. Include the section number, e.g. Section 1: ..., etc.")
+    section_name: str = Field(
+        ...,
+        description="The name of the section. Include the section number, e.g. Section 1: ..., etc.",
+    )
     section_introduction: str = Field(
         ...,
         description="Introduction to the key questions of this section and how it connects to the previous section. No more than 3 sentences.",
@@ -75,17 +78,26 @@ class Section(BaseModel):
 
 
 class BookStructure(BaseModel):
-    language: str = Field(..., description="The language of the book, and the language of the responses.")
+    language: str = Field(
+        ..., description="The language of the book, and the language of the responses."
+    )
     title: str = Field(..., description="The title of the book.")
     author: str = Field(..., description="The author of the book.")
-    year: str = Field(..., description="The date of the book. Leave it blank if you don't know the date. Format: YYYY")
+    year: str = Field(
+        ...,
+        description="The date of the book. Leave it blank if you don't know the date. Format: YYYY",
+    )
     sections: list[Section]
 
 
 class Card(BaseModel):
     title: str
-    description: str = Field(..., description="The description of the card, no more than 2 sentences.")
-    illustration: str = Field(..., description="The description of the illustration, should always be in English.")
+    description: str = Field(
+        ..., description="The description of the card, no more than 2 sentences."
+    )
+    illustration: str = Field(
+        ..., description="The description of the illustration, should always be in English."
+    )
     quotes: list[str]
     card_type: str
     card_color: str = Field(..., description="The html hex code of the color like #1A2B3C")
@@ -95,7 +107,9 @@ class Card(BaseModel):
 
 
 class CardSet(BaseModel):
-    language: str = Field(..., description="The language of the book, and the language of the responses.")
+    language: str = Field(
+        ..., description="The language of the book, and the language of the responses."
+    )
     card_definitions: list[Card]
 
 

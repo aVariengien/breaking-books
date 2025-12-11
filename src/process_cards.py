@@ -11,11 +11,12 @@ from joblib import Parallel, delayed
 from typing_extensions import Annotated
 from weasyprint import HTML
 
-TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
-CARD_TEMPLATE_FILENAME = "card_template.html"
-SECTION_TEMPLATE_FILENAME = "section_card_template.html"
-TOC_TEMPLATE_FILENAME = "toc_template.html"
-KEY_PASSAGES_TEMPLATE_FILENAME = "key_passages_template.html"
+from constants import (
+    CARD_TEMPLATE_FILENAME,
+    SECTION_TEMPLATE_FILENAME,
+    TEMPLATE_DIR,
+    TOC_TEMPLATE_FILENAME,
+)
 
 # Common type annotations
 JsonLinesInputFile = Annotated[

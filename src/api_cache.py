@@ -7,7 +7,6 @@ Set DISABLE_API_CACHE=true to disable caching entirely.
 import base64
 import hashlib
 import json
-import os
 from pathlib import Path
 from typing import Any, Dict
 
@@ -19,9 +18,7 @@ from litellm import acompletion as _litellm_acompletion
 from litellm import completion as _litellm_completion
 from runware import IImageInference, Runware
 
-# Configuration
-CACHE_DIR = Path("cache/api_responses")
-DISABLE_CACHE = os.getenv("DISABLE_API_CACHE", "false").lower() == "true"
+from constants import CACHE_DIR, DISABLE_CACHE, RUNWARE_API_KEY
 
 # No global client - use separate connections for parallel processing
 
@@ -120,7 +117,7 @@ async def generate_single_image_async(
         return cached_data["output"]
 
     # Make real API call with dedicated connection for parallel processing
-    runware = Runware(api_key=os.getenv("RUNWARE_API_KEY"))
+    runware = Runware(api_key=RUNWARE_API_KEY)
     await runware.connect()
 
     request_image = IImageInference(
