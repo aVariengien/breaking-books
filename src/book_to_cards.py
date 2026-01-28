@@ -101,6 +101,9 @@ class Card(BaseModel):
     quotes: list[str]
     card_type: str
     card_color: str = Field(..., description="The html hex code of the color like #1A2B3C")
+    section_index: int = Field(
+        0, description="The 1-based index of the section this card belongs to."
+    )
     image_base64: str | None = Field(
         None, description="Keep this field empty, for further processing."
     )
@@ -177,14 +180,15 @@ async def generate_cards_from_sections(
         ]
     )
 
-    # Combine all cards and assign section colors
+    # Combine all cards and assign section colors and indices
     all_cards = CardSet(card_definitions=[], language=book_structure.language)
     for section_idx, card_set in enumerate(section_card_sets):
         section_color = book_structure.sections[section_idx].section_color
         for card in card_set.card_definitions:
             card.card_color = section_color.html_color
+            card.section_index = section_idx + 1  # 1-based index
             all_cards.card_definitions.append(card)
-        print(f"Section {section_idx} processed with {len(card_set.card_definitions)} cards")
+        print(f"Section {section_idx + 1} processed with {len(card_set.card_definitions)} cards")
     return all_cards
 
 

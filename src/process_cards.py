@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -8,6 +9,7 @@ import markdown
 import typer
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from joblib import Parallel, delayed
+from pdf2image import convert_from_bytes
 from typing_extensions import Annotated
 from weasyprint import HTML
 
@@ -58,13 +60,13 @@ def slugify(text: str) -> str:
     return "".join(filter(str.isalnum, text.lower().replace(" ", "_")))
 
 
-def create_pdf(
+def _render_template(
     template_data: Dict[str, Any],
     template_file_name: str,
     output_dir: Path,
     title: str | None = None,
-) -> Path:
-    """Renders a single card from data to HTML and then to PDF."""
+) -> tuple[str, str]:
+    """Renders a template to HTML and returns (rendered_html, base_filename)."""
     # Create a new template environment for each worker
     file_loader = FileSystemLoader(TEMPLATE_DIR)
     env = Environment(loader=file_loader, autoescape=select_autoescape(["html", "xml"]))
@@ -74,10 +76,13 @@ def create_pdf(
         card_title = template_data.get("title", template_data.get("section_name", "toc"))
     else:
         card_title = title
-    base_filename = slugify(card_title)
-
-    html_file_path = output_dir / f"{base_filename}.html"
-    pdf_file_path = html_file_path.with_suffix(".pdf")
+    
+    # Add section prefix if section_index is present
+    section_index = template_data.get("section_index")
+    if section_index is not None:
+        base_filename = f"section_{section_index:02d}_{slugify(card_title)}"
+    else:
+        base_filename = slugify(card_title)
 
     # Edit description to convert markdown to html
     fields_to_markdown = ["description", "section_introduction"]
@@ -86,12 +91,76 @@ def create_pdf(
             template_data[field] = markdown.markdown(template_data[field])
 
     rendered_html = template.render(template_data)
+
+    # Save HTML file
+    html_file_path = output_dir / f"{base_filename}.html"
     html_file_path.write_text(rendered_html, encoding="utf-8")
 
+    return rendered_html, base_filename
+
+
+def create_pdf(
+    template_data: Dict[str, Any],
+    template_file_name: str,
+    output_dir: Path,
+    title: str | None = None,
+) -> Path:
+    """Renders a single card from data to HTML and then to PDF."""
+    rendered_html, base_filename = _render_template(
+        template_data, template_file_name, output_dir, title
+    )
+
+    pdf_file_path = output_dir / f"{base_filename}.pdf"
     html_doc = HTML(string=rendered_html)
     html_doc.write_pdf(pdf_file_path)
 
     return pdf_file_path
+
+
+def create_png(
+    template_data: Dict[str, Any],
+    template_file_name: str,
+    output_dir: Path,
+    title: str | None = None,
+) -> Path:
+    """Renders a single card from data to HTML and then to PNG via PDF conversion."""
+    paths = create_png_multipage(template_data, template_file_name, output_dir, title)
+    return paths[0] if paths else output_dir / "empty.png"
+
+
+def create_png_multipage(
+    template_data: Dict[str, Any],
+    template_file_name: str,
+    output_dir: Path,
+    title: str | None = None,
+) -> list[Path]:
+    """Renders a template to HTML and then to PNG(s) via PDF conversion.
+    
+    Returns a list of PNG paths, one per page.
+    """
+    rendered_html, base_filename = _render_template(
+        template_data, template_file_name, output_dir, title
+    )
+
+    # Generate PDF in memory
+    html_doc = HTML(string=rendered_html)
+    pdf_bytes = BytesIO()
+    html_doc.write_pdf(pdf_bytes)
+    pdf_bytes.seek(0)
+
+    # Convert PDF to PNG using pdf2image
+    images = convert_from_bytes(pdf_bytes.read(), dpi=150)
+
+    png_paths = []
+    for i, image in enumerate(images):
+        if len(images) == 1:
+            png_file_path = output_dir / f"{base_filename}.png"
+        else:
+            png_file_path = output_dir / f"{base_filename}_page{i + 1}.png"
+        image.save(png_file_path, "PNG")
+        png_paths.append(png_file_path)
+
+    return png_paths
 
 
 def _process_cards_parallel(
@@ -99,28 +168,40 @@ def _process_cards_parallel(
     template_filename: str,
     output_dir: Path,
     n_jobs: int | None = None,
+    output_type: str = "pdf",
 ) -> list[Path]:
-    """Common function to process cards in parallel."""
+    """Common function to process cards in parallel.
+    
+    Args:
+        cards_data: List of card data dictionaries
+        template_filename: Name of the template file to use
+        output_dir: Directory to save output files
+        n_jobs: Number of parallel jobs (None = all CPU cores)
+        output_type: "pdf" or "png"
+    """
     output_dir.mkdir(exist_ok=True)
 
     # Use all CPU cores if n_jobs is not specified
     if n_jobs is None:
         n_jobs = os.cpu_count()
 
+    # Select the appropriate creation function
+    create_func = create_png if output_type == "png" else create_pdf
+
     # Process cards in parallel
     results = Parallel(n_jobs=n_jobs, return_as="generator_unordered")(
-        delayed(create_pdf)(data, template_filename, output_dir) for data in cards_data
+        delayed(create_func)(data, template_filename, output_dir) for data in cards_data
     )
 
     # Process results as they complete
     completed = 0
-    pdf_paths = []
+    output_paths = []
     for file_path in results:
         completed += 1
         print(f"Processed card {completed}/{len(cards_data)}: {file_path}")
-        pdf_paths.append(file_path)
+        output_paths.append(file_path)
 
-    return pdf_paths
+    return output_paths
 
 
 @app.command()
@@ -159,6 +240,51 @@ def generate_toc(json_structure: JsonInputFile) -> Path:
 
     book_structure = json.loads(json_structure.read_text(encoding="utf-8"))
     return create_pdf(book_structure, TOC_TEMPLATE_FILENAME, output_dir, title="toc")
+
+
+# PNG generation functions for ZIP output
+
+
+def generate_cards_as_png(input_file: Path, n_jobs: int | None = None) -> list[Path]:
+    """Processes a JSON Lines file to generate HTML cards and convert them to PNG."""
+    output_dir = input_file.parent / (input_file.stem + "_output")
+
+    cards_data = []
+    with input_file.open("r", encoding="utf-8") as f_in:
+        for line in f_in:
+            line_content = line.strip()
+            if not line_content:
+                continue
+            cards_data.append(json.loads(line_content))
+
+    return _process_cards_parallel(cards_data, CARD_TEMPLATE_FILENAME, output_dir, n_jobs, "png")
+
+
+def generate_section_cards_as_png(input_file: Path, n_jobs: int | None = None) -> list[Path]:
+    """Processes a JSON file with book structure to generate section cards as PNGs."""
+    output_dir = input_file.parent / (input_file.stem + "_output")
+    output_dir.mkdir(exist_ok=True)
+
+    book_structure = json.loads(input_file.read_text(encoding="utf-8"))
+    cards_data = book_structure["sections"]
+    
+    # Add section_index to each section for filename prefixing
+    for i, section in enumerate(cards_data):
+        section["section_index"] = i + 1
+
+    return _process_cards_parallel(cards_data, SECTION_TEMPLATE_FILENAME, output_dir, n_jobs, "png")
+
+
+def generate_toc_as_png(json_structure: Path) -> list[Path]:
+    """Generate the table of contents as PNG(s) from a JSON structure file.
+    
+    Returns a list of PNG paths, one per page of the TOC.
+    """
+    output_dir = json_structure.parent / (json_structure.stem + "_output")
+    output_dir.mkdir(exist_ok=True)
+
+    book_structure = json.loads(json_structure.read_text(encoding="utf-8"))
+    return create_png_multipage(book_structure, TOC_TEMPLATE_FILENAME, output_dir, title="toc")
 
 
 if __name__ == "__main__":

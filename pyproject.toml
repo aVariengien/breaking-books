@@ -14,6 +14,7 @@ dependencies = [
     "joblib>=1.5.0",
     "litellm>=1.70.2",
     "markdown>=3.8",
+    "pdf2image>=1.16.0",
     "pydantic>=2.11.4",
     "pypdf>=5.5.0",
     "runware>=0.4.10",

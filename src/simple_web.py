@@ -1,6 +1,7 @@
 import asyncio
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 from typing import Literal
 
@@ -19,7 +20,14 @@ from src.book_to_cards import (
 )
 from src.clean_epub import convert_epub_to_html, convert_html_to_clean_html
 from src.pdf_combiner import combine_pdfs
-from src.process_cards import generate_cards, generate_section_cards, generate_toc
+from src.process_cards import (
+    generate_cards,
+    generate_cards_as_png,
+    generate_section_cards,
+    generate_section_cards_as_png,
+    generate_toc,
+    generate_toc_as_png,
+)
 
 load_dotenv()
 
@@ -38,7 +46,7 @@ class State(BaseModel):
     generate_images: bool = True
     toc_only: bool = False
     output_file: Path | None = None
-    card_format: Literal["A5", "A6"] = "A6"
+    output_format: Literal["pdf", "zip"] = "pdf"
 
     phase: str = "configure"
 
@@ -69,16 +77,17 @@ def configure_phase(state: State):
             value=30,
             help="Total number of game cards to create",
         )
-        formats = {
-            "A6": "A6 (recommended, 4 per page)",
-            "A5": "A5 (2 per page)",
-        }
-        state.card_format = st.radio(
-            "How big should the cards be?",
-            formats.keys(),
-            format_func=lambda x: formats[x],
-            horizontal=True,
-        )
+
+    output_formats = {
+        "pdf": "PDF - A6 format (4 cards per page, best for physical deck)",
+        "zip": "Zip folder with images (best for virtual session)",
+    }
+    state.output_format = st.radio(
+        "Output format",
+        output_formats.keys(),
+        format_func=lambda x: output_formats[x],
+        horizontal=True,
+    )
 
     state.generate_images = not st.checkbox(
         "Skip image generation",
@@ -160,17 +169,30 @@ async def processing_phase(state: State):
                 cards, structure, state.work_dir / f"{state.input_file.stem}_game"
             )
 
-            pdf_paths = []
-            pdf_paths += generate_cards(cards_file)
-            pdf_paths += generate_section_cards(structure_file)
-            pdf_paths += [generate_toc(structure_file)]
+            if state.output_format == "pdf":
+                # Generate PDFs and combine them
+                pdf_paths = []
+                pdf_paths += generate_cards(cards_file)
+                pdf_paths += generate_section_cards(structure_file)
+                pdf_paths += [generate_toc(structure_file)]
 
-            state.output_file = state.input_file.with_name(
-                f"{state.input_file.stem}_game_to_print.pdf"
-            )
-            combine_pdfs(
-                pdf_paths, state.output_file, four_up=state.card_format == "A6", scale_a4=False
-            )
+                state.output_file = state.input_file.with_name(
+                    f"{state.input_file.stem}_game_to_print.pdf"
+                )
+                combine_pdfs(pdf_paths, state.output_file, four_up=True, scale_a4=False)
+            else:
+                # Generate PNGs and create a ZIP file
+                png_paths = []
+                png_paths += generate_cards_as_png(cards_file)
+                png_paths += generate_section_cards_as_png(structure_file)
+                png_paths += generate_toc_as_png(structure_file)
+
+                state.output_file = state.input_file.with_name(
+                    f"{state.input_file.stem}_game_images.zip"
+                )
+                with zipfile.ZipFile(state.output_file, "w", zipfile.ZIP_DEFLATED) as zf:
+                    for png_path in png_paths:
+                        zf.write(png_path, png_path.name)
 
         status.update(label="Book processed!", state="complete")
 
@@ -182,18 +204,27 @@ def results_phase(state: State):
     """Phase 3: Show results and downloads"""
     st.header("🎉 Your Game is Ready!")
 
-    dl_col, pdf_col = st.columns([1, 4])
+    if state.output_format == "pdf":
+        dl_col, pdf_col = st.columns([1, 4])
 
-    with dl_col:
+        with dl_col:
+            st.download_button(
+                label="Download PDF to print",
+                data=state.output_file.read_bytes(),
+                file_name=state.output_file.name,
+                mime="application/pdf",
+            )
+
+        with pdf_col:
+            pdf_viewer(state.output_file, annotations=[])
+    else:
         st.download_button(
-            label="Download PDF to print",
+            label="Download ZIP with images",
             data=state.output_file.read_bytes(),
             file_name=state.output_file.name,
-            mime="application/pdf",
+            mime="application/zip",
         )
-
-    with pdf_col:
-        pdf_viewer(state.output_file, annotations=[])
+        st.info("Your ZIP file contains all card images as PNG files, ready for virtual sessions.")
 
 
 def main():
