@@ -139,7 +139,7 @@ async def processing_phase(state: State):
 
     assert input_path is not None
 
-    with st.status("Processing your book...", expanded=True) as status:
+    with st.status(f"Processing your book with {MODEL_NAME}...", expanded=True) as status:
         with Stdout2Streamlit():
 
             print("Converting epub to html")
