@@ -1,4 +1,5 @@
 import asyncio
+import re
 import sys
 import tempfile
 import zipfile
@@ -9,6 +10,16 @@ import streamlit as st
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from streamlit_pdf_viewer import pdf_viewer
+
+
+def sanitize_filename(filename: str) -> str:
+    """Remove or replace special characters from a filename to make it safe."""
+    # Replace common problematic characters with underscores
+    sanitized = re.sub(r"['\"\u2019\u2018\u201c\u201d]", "", filename)  # Remove quotes/apostrophes
+    sanitized = re.sub(r"[^\w\s\-.]", "_", sanitized)  # Replace other special chars with underscore
+    sanitized = re.sub(r"_+", "_", sanitized)  # Collapse multiple underscores
+    sanitized = sanitized.strip("_")
+    return sanitized
 
 from constants import MODEL_NAME
 from src.book_to_cards import (
@@ -103,8 +114,9 @@ def configure_phase(state: State):
 
         state.work_dir = Path(tempfile.mkdtemp(prefix="breaking_books_"))
 
-        # Save uploaded file
-        uploaded_file_path = state.work_dir / uploaded_file.name
+        # Save uploaded file with sanitized name
+        safe_filename = sanitize_filename(uploaded_file.name)
+        uploaded_file_path = state.work_dir / safe_filename
         uploaded_file_path.write_bytes(uploaded_file.getvalue())
         state.input_file = uploaded_file_path
 
