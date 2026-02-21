@@ -1,0 +1,59 @@
+[project]
+name = "breaking-books"
+version = "2.0.0"
+description = "Transform a book into a printable flashcard deck using an AI agent"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+    { name = "Diego Dorn" },
+    { name = "Alexandre Variengien" },
+]
+
+dependencies = [
+    "anthropic>=0.40.0",
+    "jinja2>=3.1.6",
+    "pydantic>=2.11.4",
+    "runware>=0.4.10",
+    "streamlit>=1.45.1",
+    "streamlit-pdf-viewer>=0.0.24",
+    "typer>=0.15.4",
+    "weasyprint>=65.1",
+    "pypdf>=5.5.0",
+    "pillow>=11.0.0",
+    "python-slugify>=8.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+    "prek>=0.1.0",
+    "pytest>=8.4.0",
+    "pytest-asyncio>=1.0.0",
+    "ty>=0.0.18",
+    "types-pillow>=10.2.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+]

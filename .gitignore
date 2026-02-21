@@ -1,0 +1,27 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Runtime dirs (created per-run)
+tmp/
+out/
+cache/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Large files
+*.epub
+*.pdf
+*.png
+*.jpg
+*.jpeg
+!v1/images/
+
+# IDE
+.idea/
+.vscode/
