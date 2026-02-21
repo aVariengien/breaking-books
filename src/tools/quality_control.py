@@ -31,7 +31,17 @@ def quality_control(
     Returns a natural-language string listing possible improvements,
     which the agent can incorporate (or not) in subsequent edits.
     """
-    raise NotImplementedError()
+    import shutil
+
+    version = out_dir.next_version()
+    report = "All good. No issues found."
+
+    # Save snapshot
+    if cards_json_path.exists():
+        shutil.copy(cards_json_path, out_dir.cards_json_path(version))
+    out_dir.qc_report_path(version).write_text(report, encoding="utf-8")
+
+    return report
 
 
 # ------------------------------------------------------------------

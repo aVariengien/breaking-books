@@ -12,6 +12,7 @@ authors = [
 
 dependencies = [
     "anthropic>=0.40.0",
+    "claude-agent-sdk>=0.0.14",
     "jinja2>=3.1.6",
     "pydantic>=2.11.4",
     "runware>=0.4.10",
@@ -20,6 +21,8 @@ dependencies = [
     "typer>=0.15.4",
     "weasyprint>=65.1",
     "pypdf>=5.5.0",
+    "pypdfium2>=4.30.0",
+    "joblib>=1.4.0",
     "pillow>=11.0.0",
     "python-slugify>=8.0.0",
 ]

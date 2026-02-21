@@ -1,17 +1,22 @@
-"""
-Breaking Books agent — orchestrated by the Anthropic SDK.
+"""Breaking Books agent — orchestrated by the Claude Agent SDK."""
 
-The agent runs in an autonomous loop with access to ReadFile, EditFile, and
-QualityControl. It terminates when it judges the deck complete (or when
-max_qc_calls is exhausted). It can be resumed with follow-up instructions.
-"""
+import asyncio
+from typing import Any, AsyncGenerator
 
-import anthropic
+from claude_agent_sdk import (
+    ClaudeAgentOptions,
+    ClaudeSDKClient,
+    ResultMessage,
+    create_sdk_mcp_server,
+    tool,
+)
+from claude_agent_sdk import McpSdkServerConfig
 
+from big_prompt import build_system_prompt
 from lib.models import Config, OutDir, WorkDir
 
 
-def run_agent(
+async def run_agent(
     book_html: str,
     config: Config,
     work_dir: WorkDir,
@@ -19,35 +24,56 @@ def run_agent(
     *,
     resume: bool = False,
     instructions: str = "",
-) -> None:
-    """
-    Run (or resume) the Breaking Books agent loop.
+) -> AsyncGenerator[Any, None]:
+    """Async generator that yields all SDK messages from the agent loop."""
+    session_id: str | None = None
+    if resume and out_dir.session_id_path.exists():
+        session_id = out_dir.session_id_path.read_text().strip() or None
 
-    The agent receives the full book HTML in its system prompt and iteratively:
-    1. Reads/edits cards.json in work_dir.
-    2. Calls QualityControl to get improvement feedback.
-    3. Incorporates feedback until satisfied or max_qc_calls reached.
+    if resume and instructions:
+        prompt = instructions
+    elif resume:
+        prompt = "Continue improving the flashcard deck based on the last QC report."
+    else:
+        prompt = (
+            "Begin. Plan the sections, write the cards to cards.json, then run quality_control()."
+        )
 
-    Args:
-        book_html:    Full book content (from extract_book_content).
-        config:       User configuration.
-        work_dir:     Agent working directory (TMP/).
-        out_dir:      Output + snapshots directory (OUT/).
-        resume:       If True, continue from the last agent state.
-        instructions: Optional follow-up instructions for a resumed session.
-    """
-    raise NotImplementedError()
+    options = ClaudeAgentOptions(
+        system_prompt=build_system_prompt(book_html, config, work_dir),
+        mcp_servers={"bb": _make_agent_tools(work_dir, config, out_dir)},
+        allowed_tools=["Read", "Write", "Edit", "Glob", "mcp__bb__quality_control"],
+        permission_mode="acceptEdits",
+        cwd=str(work_dir.root),
+        resume=session_id,
+        model="haiku",
+    )
+
+    async with ClaudeSDKClient(options=options) as client:
+        await client.query(prompt)
+        async for message in client.receive_messages():
+            yield message
+            if isinstance(message, ResultMessage):
+                out_dir.session_id_path.write_text(message.session_id)
+                break
 
 
-def _make_agent_tools(
-    work_dir: WorkDir,
-    config: Config,
-    out_dir: OutDir,
-) -> list[anthropic.types.ToolParam]:
-    """
-    Build the Anthropic tool definitions exposed to the agent:
-    - read_file(path)            → str
-    - edit_file(path, content)   → None
-    - quality_control()          → str  (report)
-    """
-    raise NotImplementedError()
+def _make_agent_tools(work_dir: WorkDir, config: Config, out_dir: OutDir) -> "McpSdkServerConfig":
+    @tool(
+        "quality_control",
+        (
+            "Run quality control on the current cards.json deck. "
+            "Returns a natural-language report of suggested improvements and saves a snapshot. "
+            f"Call at most {config.max_qc_calls} times."
+        ),
+        {},
+    )
+    async def qc_tool(args: dict[str, Any]) -> dict[str, Any]:
+        from tools.quality_control import quality_control
+
+        report = await asyncio.to_thread(
+            quality_control, work_dir.cards_json, config, work_dir, out_dir
+        )
+        return {"content": [{"type": "text", "text": report}]}
+
+    return create_sdk_mcp_server(name="breaking-books", tools=[qc_tool])

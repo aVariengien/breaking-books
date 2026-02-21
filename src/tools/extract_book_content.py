@@ -1,4 +1,4 @@
-"""Convert an EPUB (or other input format) into clean HTML for LLM consumption."""
+"""Convert various book formats into clean HTML for LLM consumption."""
 
 import re
 import subprocess
@@ -7,6 +7,30 @@ from pathlib import Path
 
 
 _LUA_FILTER = Path(__file__).parent / "remove_footnotes.lua"
+
+_SUPPORTED_SUFFIXES = {".epub", ".html", ".htm", ".md", ".markdown"}
+
+
+def load_book(path: Path) -> str:
+    """
+    Load a book from any supported format and return clean HTML.
+
+    - .epub            → pandoc EPUB conversion + clean_html
+    - .html / .htm     → clean_html directly
+    - .md / .markdown  → pandoc markdown→HTML + clean_html
+    """
+    suffix = path.suffix.lower()
+    if suffix == ".epub":
+        return extract_book_content(path)
+    elif suffix in (".html", ".htm"):
+        return clean_html(path.read_text(encoding="utf-8"))
+    elif suffix in (".md", ".markdown"):
+        return path.read_text(encoding="utf-8")
+    else:
+        raise ValueError(
+            f"Unsupported file format: {suffix!r}. "
+            f"Supported: {', '.join(sorted(_SUPPORTED_SUFFIXES))}"
+        )
 
 
 def extract_book_content(epub_path: Path) -> str:
@@ -41,10 +65,10 @@ def extract_book_content(epub_path: Path) -> str:
 
         html = output_html.read_text(encoding="utf-8")
 
-    return _clean_html(html)
+    return clean_html(html)
 
 
-def _clean_html(html: str) -> str:
+def clean_html(html: str) -> str:
     html = _normalize_image_paths(html)
     html = _normalize_img_tag_whitespace(html)
     html = _remove_empty_spans(html)

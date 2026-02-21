@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  concept-image-left — image column on the left, text column on the right.
+  concept-image-right — text column on the left, image column on the right.
   Variables: title, book_quotes, image_description, image_base64,
              card_size (A5|A6), language
 -->
@@ -45,40 +45,14 @@
       width: 100%;
       height: 100%;
       display: grid;
-      grid-template-columns: 2fr 3fr;
-    }
-
-    .image-col {
-      overflow: hidden;
-      position: relative;
-    }
-
-    .image-col img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .image-placeholder {
-      width: 100%;
-      height: 100%;
-      background: #efefef;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 3mm;
-      color: #aaa;
-      font-family: 'Source Sans Pro', sans-serif;
-      font-size: {{ quote_size }};
-      text-align: center;
+      grid-template-columns: 3fr 2fr;
     }
 
     .text-col {
       display: flex;
       flex-direction: column;
       padding: 4mm;
-      border-left: 2pt solid #222;
+      border-right: 2pt solid #222;
     }
 
     .title {
@@ -117,17 +91,36 @@
       color: #888;
       font-family: 'Playfair Display', serif;
     }
+
+    .image-col {
+      overflow: hidden;
+      position: relative;
+    }
+
+    .image-col img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .image-placeholder {
+      width: 100%;
+      height: 100%;
+      background: #efefef;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3mm;
+      color: #aaa;
+      font-family: 'Source Sans Pro', sans-serif;
+      font-size: {{ quote_size }};
+      text-align: center;
+    }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="image-col">
-      {% if image_base64 %}
-      <img src="data:image/png;base64,{{ image_base64 }}" alt="{{ image_description }}">
-      {% else %}
-      <div class="image-placeholder">{{ image_description }}</div>
-      {% endif %}
-    </div>
     <div class="text-col">
       <h1 class="title">{{ title }}</h1>
       <div class="quotes">
@@ -139,6 +132,13 @@
         </ul>
         {% endif %}
       </div>
+    </div>
+    <div class="image-col">
+      {% if image_base64 %}
+      <img src="data:image/png;base64,{{ image_base64 }}" alt="{{ image_description }}">
+      {% else %}
+      <div class="image-placeholder">{{ image_description }}</div>
+      {% endif %}
     </div>
   </div>
 </body>
