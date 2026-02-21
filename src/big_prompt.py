@@ -1,21 +1,65 @@
-"""
-Central location for the agent's instructions.
+"""Central location for the agent's instructions."""
 
-This module is the single source of truth for:
-- STEPS_PROMPT: the ordered pipeline the agent must follow.
-- CARD_TYPE_MANUAL: guidance on when to choose each card type.
-- build_system_prompt(): assembles everything (book, schemas, examples, config).
-
-Schema docs and examples are injected dynamically via the registry so that
-adding a new schema file automatically includes it in the prompt.
-"""
+import importlib
+import json
 
 from lib.models import Config, WorkDir
-from lib.registry import build_schema_docs
+from lib.registry import get_all_schema_classes
 
 
-STEPS_PROMPT: str = """
-# Steps
+# ---------------------------------------------------------------------------
+# Prompt template
+# ---------------------------------------------------------------------------
+# Placeholders (filled by build_system_prompt):
+#   {num_cards}       — target card count
+#   {cards_json_path} — absolute path to cards.json
+#   {schema_docs}     — rendered schema reference (from build_schema_docs)
+#   {max_qc_calls}    — max quality-control iterations
+#   {card_size}       — physical card size
+#   {lang_line}       — language instruction
+#   {prefs_section}   — optional user preferences line
+#   {book_html}       — full book HTML
+#
+# Note: literal {{ / }} in JSON snippets survive str.format() as { / }.
+# Dynamic content (schema_docs, book_html) is brace-escaped before formatting.
+# ---------------------------------------------------------------------------
+
+_PROMPT = """\
+You are **Breaking Books**, an AI that transforms books into beautiful, printable flashcard decks.
+
+## Your task
+
+Read the full book at the end of this prompt and produce a deck of \
+**{num_cards} flashcards** saved to `cards.json`.
+
+The absolute path to cards.json is: `{cards_json_path}`
+
+## cards.json format
+
+`cards.json` is a **flat JSON array** of card objects. Every card has these base fields:
+
+```json
+{{
+  "type": "<card-type>",   // determines which schema applies
+  "section": 0             // 0-based section index; cards in the same section share an index
+}}
+```
+
+Additional fields depend on the card type (see schemas below).
+
+## Card type guidance
+
+Choose the card type that best captures the nature of the idea:
+- Use the schema's description (shown below) to decide when each type applies.
+- Prefer specificity over generality: a concrete example deserves an example card,
+  not a concept card.
+- Distribute types naturally — a real book will have a mix.
+
+## Card schemas
+
+{schema_docs}
+
+## Steps
 
 1. **Plan sections** — read the book and decide on 3–5 thematic sections.
    Choose section names and assign a 0-based integer index to each.
@@ -31,83 +75,15 @@ STEPS_PROMPT: str = """
 
 4. **Iterate** — apply the suggested improvements and call `quality_control()`
    again. Repeat until the report shows no significant issues or
-   max_qc_calls is reached.
-"""
-
-CARD_TYPE_MANUAL: str = """
-# Card type guidance
-
-Choose the card type that best captures the nature of the idea:
-- Use the schema's docstring (shown below) to decide when each type applies.
-- Prefer specificity over generality: a concrete example deserves an example card,
-  not a concept card.
-- Distribute types naturally — a real book will have a mix.
-"""
-
-
-def build_system_prompt(book_html: str, config: Config, work_dir: WorkDir) -> str:
-    """
-    Assemble the complete agent system prompt.
-
-    Sections (in order):
-    1. Role & goal
-    2. cards.json format
-    3. Card type manual
-    4. Schema definitions + examples (from registry)
-    5. Step-by-step pipeline (STEPS_PROMPT)
-    6. Config (num_cards, language, user_preferences)
-    7. Full book HTML
-    """
-    schema_docs = build_schema_docs()
-
-    lang_line = (
-        f"Write all card content in **{config.language}**."
-        if config.language
-        else "Match the language of the book."
-    )
-
-    prefs_section = (
-        f"\n- User preferences: {config.user_preferences}" if config.user_preferences else ""
-    )
-
-    return f"""You are **Breaking Books**, an AI that transforms books into beautiful, \
-printable flashcard decks.
-
-## Your task
-
-Read the full book at the end of this prompt and produce a deck of \
-**{config.num_cards} flashcards** saved to `cards.json`.
-
-The absolute path to cards.json is: `{work_dir.cards_json.resolve()}`
-
-## cards.json format
-
-`cards.json` is a **flat JSON array** of card objects. Every card has these base fields:
-
-```json
-{{
-  "type": "<card-type>",   // determines which schema applies
-  "section": 0             // 0-based section index; cards in the same section share an index
-}}
-```
-
-Additional fields depend on the card type (see schemas below).
-
-{CARD_TYPE_MANUAL}
-
-## Card schemas
-
-{schema_docs}
-
-{STEPS_PROMPT}
+   `max_qc_calls` is reached.
 
 ## Configuration
 
-- Target card count: {config.num_cards}
-- Card size: {config.card_size}
+- Target card count: {num_cards}
+- Card size: {card_size}
 - Language: {lang_line}
-- Maximum quality control calls: {config.max_qc_calls}{prefs_section}
-- Write the cards to: {work_dir.cards_json.resolve()}
+- Maximum quality-control calls: {max_qc_calls}{prefs_section}
+- Write the cards to: `{cards_json_path}`
 
 ---
 
@@ -117,3 +93,102 @@ Additional fields depend on the card type (see schemas below).
 {book_html}
 </book>
 """
+
+
+# ---------------------------------------------------------------------------
+# Schema reference builder
+# ---------------------------------------------------------------------------
+
+
+def _clean_json_schema(schema: dict) -> dict:
+    """Strip noisy Pydantic metadata from a JSON schema for use in the prompt.
+
+    Removes top-level title/description (rendered separately) and per-property
+    title keys (field names are self-evident).
+    """
+    result: dict = {}
+    for key in ("type", "properties", "required"):
+        if key not in schema:
+            continue
+        if key == "properties":
+            result["properties"] = {
+                name: {k: v for k, v in prop.items() if k != "title"}
+                for name, prop in schema["properties"].items()
+            }
+        else:
+            result[key] = schema[key]
+    return result
+
+
+def build_schema_docs() -> str:
+    """Render a human-readable reference for all card schemas, for the agent prompt."""
+    sections: list[str] = []
+
+    for cls in get_all_schema_classes():
+        type_val = cls.model_fields["type"].default
+        lines: list[str] = []
+
+        # --- heading ---
+        lines.append(f'### `{cls.__name__}` — `"type": "{type_val}"`')
+
+        # --- description: class docstring ---
+        mod = importlib.import_module(cls.__module__)
+        if cls.__doc__:
+            lines.append("")
+            lines.append(cls.__doc__.strip())
+
+        # --- JSON Schema ---
+        schema = _clean_json_schema(cls.model_json_schema())
+        lines.append("")
+        lines.append("```json")
+        lines.append(json.dumps(schema, ensure_ascii=False, indent=2))
+        lines.append("```")
+
+        # --- examples ---
+        examples: list = getattr(mod, "EXAMPLES", [])
+        if examples:
+            lines.append("")
+            label = "Example" if len(examples) == 1 else "Examples"
+            lines.append(f"**{label}:**")
+            lines.append("```json")
+            for ex in examples:
+                lines.append(json.dumps(ex.model_dump(), ensure_ascii=False, indent=2))
+            lines.append("```")
+
+        sections.append("\n".join(lines))
+
+    return "\n\n---\n\n".join(sections)
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+
+def build_system_prompt(book_html: str, config: Config, work_dir: WorkDir) -> str:
+    """Assemble the complete agent system prompt."""
+    schema_docs = build_schema_docs()
+
+    lang_line = (
+        f"Write all card content in **{config.language}**."
+        if config.language
+        else "Match the language of the book."
+    )
+    prefs_section = (
+        f"\n- User preferences: {config.user_preferences}" if config.user_preferences else ""
+    )
+
+    # Escape braces in dynamic content so str.format() doesn't choke on them.
+    def _esc(s: str) -> str:
+        return s.replace("{", "{{").replace("}", "}}")
+
+    return _PROMPT.format(
+        num_cards=config.num_cards,
+        cards_json_path=work_dir.cards_json.resolve(),
+        card_size=config.card_size,
+        lang_line=lang_line,
+        max_qc_calls=config.max_qc_calls,
+        prefs_section=prefs_section,
+        schema_docs=_esc(schema_docs),
+        book_html=_esc(book_html),
+    )

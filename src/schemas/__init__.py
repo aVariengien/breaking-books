@@ -4,9 +4,10 @@ from typing import Annotated, Union
 
 from pydantic import Field
 
-from .concept import ConceptSchema
+from .default import DefaultCard
+from .example import ExampleCard
 
 # Extend this union as new schemas are added.
-Card = Annotated[Union[ConceptSchema], Field(discriminator="type")]
+Card = Annotated[Union[DefaultCard, ExampleCard], Field(discriminator="type")]
 
-__all__ = ["Card", "ConceptSchema"]
+__all__ = ["Card", "DefaultCard", "ExampleCard"]

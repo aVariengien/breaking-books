@@ -10,7 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from lib.registry import build_schema_docs, get_all_schema_classes  # noqa: E402
+from big_prompt import build_schema_docs  # noqa: E402
+from lib.registry import get_all_schema_classes  # noqa: E402
 from lib.streamlit_utils import in_streamlit  # noqa: E402
 
 

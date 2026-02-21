@@ -1,8 +1,8 @@
 """Base class shared by all card schemas."""
 
-from typing import ClassVar
+from typing import ClassVar, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Schema(BaseModel):
@@ -15,5 +15,9 @@ class Schema(BaseModel):
 
     type: str  # must be set to Literal['new-type'] in all subclasses
     section: int  # 0-based section index
+    tag: Literal["top_end", "middle", "bottom_end"] | None = Field(
+        default=None,
+        description="Optional positional marker within the section.",
+    )
 
     templates: ClassVar[list[str]]
