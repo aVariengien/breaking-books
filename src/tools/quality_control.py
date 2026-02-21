@@ -6,9 +6,13 @@ inspection and returns a natural-language improvement report. Also saves a
 versioned snapshot of cards.json + report to OutDir.
 """
 
+import json
 from pathlib import Path
 
+from pydantic import TypeAdapter, ValidationError
+
 from lib.models import Config, OutDir, WorkDir
+from schemas import Card
 
 
 def quality_control(
@@ -34,7 +38,12 @@ def quality_control(
     import shutil
 
     version = out_dir.next_version()
-    report = "All good. No issues found."
+
+    structure_errors = _check_json_structure(cards_json_path)
+    if structure_errors:
+        report = "## JSON structure errors\n\n" + "\n".join(f"- {e}" for e in structure_errors)
+    else:
+        report = "All good. No issues found."
 
     # Save snapshot
     if cards_json_path.exists():
@@ -48,10 +57,32 @@ def quality_control(
 # Internal steps
 # ------------------------------------------------------------------
 
+_card_adapter: TypeAdapter[Card] = TypeAdapter(Card)
+
 
 def _check_json_structure(cards_json_path: Path) -> list[str]:
     """Parse cards.json; return a list of structural / schema validation errors."""
-    raise NotImplementedError()
+    if not cards_json_path.exists():
+        return [f"File not found: {cards_json_path}"]
+
+    try:
+        raw = json.loads(cards_json_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return [f"Invalid JSON: {exc}"]
+
+    if not isinstance(raw, list):
+        return [f"Top-level value must be a JSON array, got {type(raw).__name__}"]
+
+    errors: list[str] = []
+    for i, item in enumerate(raw):
+        try:
+            _card_adapter.validate_python(item)
+        except ValidationError as exc:
+            for e in exc.errors(include_url=False):
+                loc = ".".join(str(p) for p in e["loc"]) if e["loc"] else "(root)"
+                errors.append(f"card[{i}].{loc}: {e['msg']}")
+
+    return errors
 
 
 def _check_section_balance(cards: list[dict]) -> list[str]:
