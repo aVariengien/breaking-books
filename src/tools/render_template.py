@@ -17,13 +17,15 @@ from tools.generate_images import image_cache_path
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 
-def render_card_to_pdf(card: dict, template_name: str, output_dir: Path, images_dir: Path) -> Path:
+def render_card_to_pdf(
+    card: dict, template_name: str, output_dir: Path, images_dir: Path, *, card_index: int
+) -> Path:
     """
     Render a single card dict with the named Jinja2 template to a PDF file.
 
     - Loads the template from src/templates/.
     - Resolves image_base64 from the image cache via image_cache_path(image_description, images_dir).
-    - Writes output to `output_dir/{card_id}.pdf`.
+    - Writes output to `output_dir/card-{card_index}.pdf`.
     - Returns the path to the generated PDF.
     """
     env = Environment(
@@ -46,8 +48,7 @@ def render_card_to_pdf(card: dict, template_name: str, output_dir: Path, images_
 
     rendered_html = template.render(**template_vars)
 
-    card_id = card.get("id", "card")
-    pdf_path = output_dir / f"{card_id}.pdf"
+    pdf_path = output_dir / f"card-{card_index}.pdf"
     HTML(string=rendered_html, base_url=str(_TEMPLATES_DIR)).write_pdf(pdf_path)
     return pdf_path
 
@@ -93,10 +94,10 @@ def cards_json_to_pdfs(
             return random.choice(schema_cls.templates)
         raise ValueError(f"No template found for card type {card_type!r}")
 
-    tasks = [({**config_vars, **card}, _resolve_template(card)) for card in cards]
+    tasks = [(i, {**config_vars, **card}, _resolve_template(card)) for i, card in enumerate(cards)]
 
     results: list[Path] = Parallel(n_jobs=n_jobs)(
-        delayed(render_card_to_pdf)(card_data, template_name, output_dir, images_dir)
-        for card_data, template_name in tasks
+        delayed(render_card_to_pdf)(card_data, template_name, output_dir, images_dir, card_index=i)
+        for i, card_data, template_name in tasks
     )
     return results

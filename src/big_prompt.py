@@ -87,8 +87,7 @@ The absolute path to cards.json is: `{work_dir.cards_json.resolve()}`
 ```json
 {{
   "type": "<card-type>",   // determines which schema applies
-  "id":   "<type>-<nn>",  // unique within the deck, e.g. "concept-01"
-  "section": 0            // 0-based section index; cards in the same section share an index
+  "section": 0             // 0-based section index; cards in the same section share an index
 }}
 ```
 

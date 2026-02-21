@@ -53,11 +53,11 @@ _TEMPLATES = ["concept-image-left.html.jinja2", "concept-image-right.html.jinja2
 
 def _make_sample_cards(n: int, card_size: str, out_dir: Path) -> list[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
+    images_dir = out_dir / "images"
     pdfs = []
     for i in range(n):
         card = {
             "type": "concept",
-            "id": f"concept-{i:03d}",
             "section": i // 3,
             "title": _TITLES[i % len(_TITLES)],
             "book_quotes": _QUOTES[i % len(_QUOTES)],
@@ -66,7 +66,7 @@ def _make_sample_cards(n: int, card_size: str, out_dir: Path) -> list[Path]:
             "language": "en",
         }
         template = _TEMPLATES[i % len(_TEMPLATES)]
-        pdfs.append(render_card_to_pdf(card, template, out_dir))
+        pdfs.append(render_card_to_pdf(card, template, out_dir, images_dir, card_index=i))
     return pdfs
 
 

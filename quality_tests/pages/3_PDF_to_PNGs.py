@@ -19,7 +19,6 @@ from tools.render_template import render_card_to_pdf  # noqa: E402
 
 _EXAMPLE_CARD = {
     "type": "concept",
-    "id": "concept-001",
     "section": 0,
     "title": "The Ratchet Effect",
     "book_quotes": [
@@ -33,7 +32,10 @@ _EXAMPLE_CARD = {
 
 
 def _make_sample_pdf(tmp_dir: Path) -> Path:
-    return render_card_to_pdf(_EXAMPLE_CARD, "concept-image-left.html.jinja2", tmp_dir)
+    images_dir = tmp_dir / "images"
+    return render_card_to_pdf(
+        _EXAMPLE_CARD, "concept-image-left.html.jinja2", tmp_dir, images_dir, card_index=0
+    )
 
 
 def run_cli() -> None:

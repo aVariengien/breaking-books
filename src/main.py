@@ -10,7 +10,7 @@ import typer
 from slugify import slugify
 
 from agent import run_agent
-from lib import agent_log
+from lib import log
 from lib.models import Config, OutDir, WorkDir
 from tools.extract_book_content import load_book
 from tools.generate_images import generate_images_for_cards
@@ -18,18 +18,7 @@ from tools.merge_pdfs import merge_pdfs_to_print
 from tools.render_template import cards_json_to_pdfs
 
 app = typer.Typer(help="Transform a book into a printable flashcard deck.")
-log = logging.getLogger("bb.main")
-
-
-def _ensure_pipeline_logging() -> None:
-    """Configure logging for the bb pipeline (once)."""
-    root = logging.getLogger("bb")
-    if root.handlers:
-        return
-    root.setLevel(logging.INFO)
-    h = logging.StreamHandler()
-    h.setFormatter(logging.Formatter("%(message)s"))
-    root.addHandler(h)
+logger = logging.getLogger("bb.main")
 
 
 @app.command()
@@ -57,7 +46,6 @@ def main(
     4. cards_json_to_pdfs(…)           →  TMP/renders/*.pdf
     5. merge_pdfs_to_print(…)          →  output_dir/deck.pdf
     """
-    _ensure_pipeline_logging()
     if resume and output_dir is None:
         raise typer.BadParameter("--output-dir is required when using --resume")
     if output_dir is None:
@@ -76,13 +64,14 @@ def main(
 
     work_dir = WorkDir.create(output_dir / "tmp")
     out_dir = OutDir.create(output_dir / "out")
+    log.setup(out_dir.log_path)
 
     # --- Step 1: load book (reuse cache on resume) ---
     if resume and out_dir.book_html_path.exists():
-        log.info("Loading cached book…")
+        logger.info("Loading cached book…")
         book_html = out_dir.book_html_path.read_text(encoding="utf-8")
     else:
-        log.info("Loading book from %s…", input_path)
+        logger.info("Loading book from %s…", input_path)
         book_html = load_book(input_path)
         out_dir.book_html_path.write_text(book_html, encoding="utf-8")
 
@@ -92,17 +81,17 @@ def main(
     )
 
     # --- Step 3: generate images ---
-    log.info("Generating images…")
+    logger.info("Generating images…")
     generate_images_for_cards(work_dir.cards_json, out_dir.images_dir)
 
     # --- Step 4: render cards to individual PDFs ---
-    log.info("Rendering cards to PDF…")
+    logger.info("Rendering cards to PDF…")
     pdf_paths = cards_json_to_pdfs(
         work_dir.cards_json, work_dir.renders_dir, config, out_dir.images_dir
     )
 
     # --- Step 5: merge into a printable sheet ---
-    log.info("Merging PDFs…")
+    logger.info("Merging PDFs…")
     merge_pdfs_to_print(pdf_paths, output_dir / "deck.pdf")
 
     typer.echo(f"Done! Output: {output_dir / 'deck.pdf'}")
@@ -117,11 +106,10 @@ async def _run_agent(
     resume: bool,
     instructions: str,
 ) -> None:
-    agent_log.setup(out_dir.agent_log_path)
     async for message in run_agent(
         book_html, config, work_dir, out_dir, resume=resume, instructions=instructions
     ):
-        agent_log.log_message(message)
+        log.log_message(message)
 
 
 if __name__ == "__main__":

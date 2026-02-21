@@ -30,7 +30,6 @@ SAMPLE_IMAGE = FIXTURES_DIR / "sample_image.png"
 EXAMPLE_CARDS: dict[str, dict] = {
     "concept": {
         "type": "concept",
-        "id": "concept-001",
         "section": 0,
         "title": "The Ratchet Effect",
         "book_quotes": [
@@ -60,7 +59,8 @@ def _render_to_png_bytes(
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
-        pdf = render_card_to_pdf(card_data, template_name, tmp_dir)
+        images_dir = tmp_dir / "images"
+        pdf = render_card_to_pdf(card_data, template_name, tmp_dir, images_dir, card_index=0)
         pngs = pdf_to_pngs(pdf, tmp_dir / "pngs", dpi=dpi)
         return pngs[0].read_bytes()
 

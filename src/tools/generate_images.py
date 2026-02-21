@@ -1,39 +1,15 @@
-"""
-Generate card images via Runware, with a persistent file cache.
-
-Image resolution pattern
-------------------------
-Images are never stored inside cards.json. Instead, the path is always derived
-deterministically from the card's image_description:
-
-    image_cache_path(description, images_dir)
-    → images_dir / f"{sha256(description)}.png"
-
-This function is the shared contract between generation and rendering:
-
-  1. generate_images_for_cards()  — calls _fetch_and_cache() for each card whose
-                                    cache file does not yet exist.
-  2. render_template.py           — calls image_cache_path() at render time to
-                                    locate the PNG and embed it as base64.
-
-The cache lives in OUT/images/ (OutDir.images_dir) so it persists across runs
-and is shared when the same description appears in multiple sessions.
-"""
+"""Generate card images via Runware, with a file cache keyed by prompt hash."""
 
 import asyncio
 import hashlib
-import logging
+import json
 import os
 from pathlib import Path
 from typing import cast
 
 import aiohttp
-from pydantic import TypeAdapter
 from runware import IImage, IImageInference, Runware
 
-from schemas import Card
-
-log = logging.getLogger("bb.generate_images")
 RUNWARE_MODEL = "runware:101@1"
 _NEGATIVE_PROMPT = "Text, label, diagram, blurry, low quality, distorted"
 
@@ -41,32 +17,30 @@ _NEGATIVE_PROMPT = "Text, label, diagram, blurry, low quality, distorted"
 # Landscape-oriented to fit the left/right image slot in card templates.
 DEFAULT_SIZE: tuple[int, int] = (512, 768)
 
-_cards_adapter = TypeAdapter(list[Card])
+
+def _prompt_cache_path(prompt: str, cache_dir: Path) -> Path:
+    """Return the cache path for a given prompt: cache_dir/{sha256(prompt)}.png"""
+    digest = hashlib.sha256(prompt.encode()).hexdigest()
+    return cache_dir / f"{digest}.png"
 
 
-def image_cache_path(description: str, images_dir: Path) -> Path:
-    """Return the deterministic cache path for an image: images_dir/{sha256(description)}.png
-
-    This is the single source of truth for where any image lives on disk.
-    Both the generator and the renderer use this function — no path is ever
-    stored in cards.json.
-    """
-    digest = hashlib.sha256(description.encode()).hexdigest()
-    return images_dir / f"{digest}.png"
+def image_cache_path(image_description: str, images_dir: Path) -> Path:
+    """Return the cache path for an image by its description. Same as _prompt_cache_path."""
+    return _prompt_cache_path(image_description, images_dir)
 
 
-async def _fetch_and_cache(description: str, size: tuple[int, int], images_dir: Path) -> None:
-    """Call Runware for one image and save it to the cache. No-op if already cached."""
-    cache_path = image_cache_path(description, images_dir)
+async def _generate_image_async(prompt: str, size: tuple[int, int], cache_dir: Path) -> Path:
+    """Download one image from Runware, saving it as a PNG in cache_dir."""
+    cache_path = _prompt_cache_path(prompt, cache_dir)
     if cache_path.exists():
-        return
+        return cache_path
 
     api_key = os.environ["RUNWARE_API_KEY"]
     runware = Runware(api_key=api_key)
     await runware.connect()
 
     request_image = IImageInference(
-        positivePrompt=description,
+        positivePrompt=prompt,
         model=RUNWARE_MODEL,
         numberResults=1,
         negativePrompt=_NEGATIVE_PROMPT,
@@ -75,13 +49,14 @@ async def _fetch_and_cache(description: str, size: tuple[int, int], images_dir: 
     )
     images = await runware.imageInference(requestImage=request_image)
 
-    if not isinstance(images, list) or not images:
-        raise RuntimeError(f"Runware returned no images for prompt: {description!r}")
+    if not images or not isinstance(images, list):
+        raise RuntimeError(f"Runware returned no images for prompt: {prompt!r}")
 
-    first_image = cast(IImage, images[0])
+    image_list = cast(list[IImage], images)
+    first_image = image_list[0]
     image_url = first_image.imageURL
-    if image_url is None:
-        raise RuntimeError(f"Runware returned image without URL for prompt: {description!r}")
+    if not image_url:
+        raise RuntimeError(f"Runware image has no URL for prompt: {prompt!r}")
 
     async with aiohttp.ClientSession() as session:
         async with session.get(image_url) as response:
@@ -89,17 +64,19 @@ async def _fetch_and_cache(description: str, size: tuple[int, int], images_dir: 
             content = await response.read()
 
     cache_path.write_bytes(content)
+    return cache_path
 
 
-def generate_image(description: str, size: tuple[int, int], images_dir: Path) -> Path:
+def generate_image(prompt: str, size: tuple[int, int], cache_dir: Path) -> Path:
     """
-    Ensure the image for a description exists in images_dir and return its path.
+    Generate a single image from a text prompt.
 
-    Cache key is SHA256(description), so the same prompt always maps to the same file.
-    Calls the Runware API only on a cache miss.
+    Uses a file cache: if `cache_dir/{sha256(prompt)}.png` exists, return it directly.
+    Otherwise calls the Runware API and saves the result.
+
+    Returns the path to the cached PNG file.
     """
-    asyncio.run(_fetch_and_cache(description, size, images_dir))
-    return image_cache_path(description, images_dir)
+    return asyncio.run(_generate_image_async(prompt, size, cache_dir))
 
 
 def generate_images_for_cards(
@@ -108,25 +85,30 @@ def generate_images_for_cards(
     size: tuple[int, int] = DEFAULT_SIZE,
 ) -> None:
     """
-    Ensure images exist for every card in cards.json that has an image_description.
+    Generate and cache images for every card in cards.json that lacks one.
 
-    Images are cached as images_dir/{sha256(description)}.png — no path is stored
-    back into cards.json. Use image_cache_path() at render time to resolve the path.
-    Skips cards whose image is already cached.
+    Reads `image_description` from each card, calls the Runware API in parallel,
+    and writes the resulting absolute path back into cards.json under `image_path`.
+    Skips cards that already have `image_path` set.
     """
-    cards = _cards_adapter.validate_json(cards_json_path.read_bytes())
-    descriptions = [
-        card.image_description
-        for card in cards
-        if hasattr(card, "image_description")
-        and not image_cache_path(card.image_description, images_dir).exists()
-    ]
-
-    if not descriptions:
-        return
+    cards: list[dict] = json.loads(cards_json_path.read_text(encoding="utf-8"))
 
     async def _run_all() -> None:
-        log.info(f"Generating {len(descriptions)} image(s)…")
-        await asyncio.gather(*[_fetch_and_cache(d, size, images_dir) for d in descriptions])
+        tasks = []
+        indices = []
+        for i, card in enumerate(cards):
+            desc = card.get("image_description")
+            if desc and not card.get("image_path"):
+                tasks.append(_generate_image_async(desc, size, images_dir))
+                indices.append(i)
+
+        if not tasks:
+            return
+
+        print(f"Generating {len(tasks)} image(s)…")
+        paths = await asyncio.gather(*tasks)
+        for i, path in zip(indices, paths):
+            cards[i]["image_path"] = str(path)
 
     asyncio.run(_run_all())
+    cards_json_path.write_text(json.dumps(cards, indent=2, ensure_ascii=False), encoding="utf-8")

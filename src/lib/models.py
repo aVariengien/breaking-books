@@ -53,9 +53,9 @@ class OutDir(BaseModel):
         return self.root / "book.html"
 
     @property
-    def agent_log_path(self) -> Path:
-        """OUT/agent.log — full agent session log (appended across runs)."""
-        return self.root / "agent.log"
+    def log_path(self) -> Path:
+        """OUT/bb.log — full session log (appended across runs)."""
+        return self.root / "bb.log"
 
     @property
     def images_dir(self) -> Path:

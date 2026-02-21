@@ -14,7 +14,6 @@ class Schema(BaseModel):
     """
 
     type: str  # must be set to Literal['new-type'] in all subclasses
-    id: str  # unique within a deck, e.g. "concept-42"
     section: int  # 0-based section index
 
     templates: ClassVar[list[str]]

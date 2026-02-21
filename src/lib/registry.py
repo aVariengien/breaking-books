@@ -8,7 +8,7 @@ import schemas as schemas_pkg
 from schemas._base import Schema
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
-_BASE_FIELD_NAMES = {"type", "id", "section", "templates"}
+_BASE_FIELD_NAMES = {"type", "section", "templates"}
 
 
 def get_all_schema_classes() -> list[type[Schema]]:
@@ -54,7 +54,7 @@ def build_schema_docs() -> str:
             parts.append(cls.__doc__.strip())
             parts.append("")
 
-        parts.append("**Fields** (in addition to the base `id` and `section`):")
+        parts.append("**Fields** (in addition to the base `section`):")
         for name, field_info in cls.model_fields.items():
             if name in _BASE_FIELD_NAMES:
                 continue
