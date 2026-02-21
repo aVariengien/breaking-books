@@ -12,15 +12,17 @@ from weasyprint import HTML
 from lib.models import Config
 from lib.registry import get_all_schema_classes
 from schemas._base import Schema
+from tools.generate_images import image_cache_path
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 
-def render_card_to_pdf(card: dict, template_name: str, output_dir: Path) -> Path:
+def render_card_to_pdf(card: dict, template_name: str, output_dir: Path, images_dir: Path) -> Path:
     """
     Render a single card dict with the named Jinja2 template to a PDF file.
 
     - Loads the template from src/templates/.
+    - Resolves image_base64 from the image cache via image_cache_path(image_description, images_dir).
     - Writes output to `output_dir/{card_id}.pdf`.
     - Returns the path to the generated PDF.
     """
@@ -32,16 +34,15 @@ def render_card_to_pdf(card: dict, template_name: str, output_dir: Path) -> Path
 
     template_vars = dict(card)
 
-    # Resolve image_path → image_base64 if not already provided
-    image_path_str = template_vars.pop("image_path", None)
-    if "image_base64" not in template_vars:
-        if image_path_str:
-            img_path = Path(image_path_str)
-            template_vars["image_base64"] = (
-                base64.b64encode(img_path.read_bytes()).decode() if img_path.exists() else None
-            )
-        else:
-            template_vars["image_base64"] = None
+    # Resolve image from cache using the description as the key
+    image_description = template_vars.get("image_description")
+    if image_description:
+        img_path = image_cache_path(image_description, images_dir)
+        template_vars["image_base64"] = (
+            base64.b64encode(img_path.read_bytes()).decode() if img_path.exists() else None
+        )
+    else:
+        template_vars["image_base64"] = None
 
     rendered_html = template.render(**template_vars)
 
@@ -55,6 +56,7 @@ def cards_json_to_pdfs(
     cards_json_path: Path,
     output_dir: Path,
     config: Config,
+    images_dir: Path,
     *,
     n_jobs: int = -1,
 ) -> list[Path]:
@@ -94,7 +96,7 @@ def cards_json_to_pdfs(
     tasks = [({**config_vars, **card}, _resolve_template(card)) for card in cards]
 
     results: list[Path] = Parallel(n_jobs=n_jobs)(
-        delayed(render_card_to_pdf)(card_data, template_name, output_dir)
+        delayed(render_card_to_pdf)(card_data, template_name, output_dir, images_dir)
         for card_data, template_name in tasks
     )
     return results

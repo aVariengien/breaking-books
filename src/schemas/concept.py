@@ -30,10 +30,6 @@ class ConceptSchema(Schema):
             "Be specific about lighting, subject, and mood."
         )
     )
-    image_path: str | None = Field(
-        default=None,
-        description="Path to the generated image file. Filled in after image generation; do not set manually.",
-    )
 
     templates: ClassVar[list[str]] = [
         "concept-image-left.html.jinja2",
