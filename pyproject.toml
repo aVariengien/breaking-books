@@ -25,6 +25,7 @@ dependencies = [
     "joblib>=1.4.0",
     "pillow>=11.0.0",
     "python-slugify>=8.0.0",
+    "aiohttp>=3.13.3",
 ]
 
 [dependency-groups]

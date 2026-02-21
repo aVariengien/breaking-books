@@ -25,11 +25,6 @@ class WorkDir(BaseModel):
         return self.root / "cards.json"
 
     @property
-    def images_dir(self) -> Path:
-        """TMP/images/ — image cache keyed by prompt hash."""
-        return self.root / "images"
-
-    @property
     def renders_dir(self) -> Path:
         """TMP/renders/ — rendered PDFs and PNGs per card."""
         return self.root / "renders"
@@ -38,7 +33,6 @@ class WorkDir(BaseModel):
     def create(cls, root: Path) -> "WorkDir":
         """Create directory structure on disk and return a WorkDir."""
         root.mkdir(parents=True, exist_ok=True)
-        (root / "images").mkdir(exist_ok=True)
         (root / "renders").mkdir(exist_ok=True)
         return cls(root=root)
 
@@ -63,6 +57,11 @@ class OutDir(BaseModel):
         """OUT/agent.log — full agent session log (appended across runs)."""
         return self.root / "agent.log"
 
+    @property
+    def images_dir(self) -> Path:
+        """OUT/images/ — image cache keyed by SHA256(prompt), shared across runs."""
+        return self.root / "images"
+
     def next_version(self) -> int:
         """Return the next unused version number (0-based)."""
         versions = []
@@ -85,4 +84,5 @@ class OutDir(BaseModel):
     def create(cls, root: Path) -> "OutDir":
         """Create directory structure on disk and return an OutDir."""
         root.mkdir(parents=True, exist_ok=True)
+        (root / "images").mkdir(exist_ok=True)
         return cls(root=root)

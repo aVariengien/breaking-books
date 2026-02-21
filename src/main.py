@@ -1,6 +1,7 @@
 """CLI entry point for Breaking Books v2."""
 
 import asyncio
+import logging
 import random
 from datetime import datetime
 from pathlib import Path
@@ -12,10 +13,23 @@ from agent import run_agent
 from lib import agent_log
 from lib.models import Config, OutDir, WorkDir
 from tools.extract_book_content import load_book
+from tools.generate_images import generate_images_for_cards
 from tools.merge_pdfs import merge_pdfs_to_print
 from tools.render_template import cards_json_to_pdfs
 
 app = typer.Typer(help="Transform a book into a printable flashcard deck.")
+log = logging.getLogger("bb.main")
+
+
+def _ensure_pipeline_logging() -> None:
+    """Configure logging for the bb pipeline (once)."""
+    root = logging.getLogger("bb")
+    if root.handlers:
+        return
+    root.setLevel(logging.INFO)
+    h = logging.StreamHandler()
+    h.setFormatter(logging.Formatter("%(message)s"))
+    root.addHandler(h)
 
 
 @app.command()
@@ -37,11 +51,13 @@ def main(
 ) -> None:
     """
     Full pipeline:
-    1. load_book(input_path)    →  book text  (EPUB, HTML, or Markdown)
-    2. run_agent(…)             →  TMP/cards.json
-    3. cards_json_to_pdfs(…)   →  TMP/renders/*.pdf
-    4. merge_pdfs_to_print(…)  →  output_dir/deck.pdf
+    1. load_book(input_path)            →  book text  (EPUB, HTML, or Markdown)
+    2. run_agent(…)                     →  TMP/cards.json
+    3. generate_images_for_cards(…)    →  OUT/images/*.png
+    4. cards_json_to_pdfs(…)           →  TMP/renders/*.pdf
+    5. merge_pdfs_to_print(…)          →  output_dir/deck.pdf
     """
+    _ensure_pipeline_logging()
     if resume and output_dir is None:
         raise typer.BadParameter("--output-dir is required when using --resume")
     if output_dir is None:
@@ -63,10 +79,10 @@ def main(
 
     # --- Step 1: load book (reuse cache on resume) ---
     if resume and out_dir.book_html_path.exists():
-        typer.echo("Loading cached book…")
+        log.info("Loading cached book…")
         book_html = out_dir.book_html_path.read_text(encoding="utf-8")
     else:
-        typer.echo(f"Loading book from {input_path}…")
+        log.info("Loading book from %s…", input_path)
         book_html = load_book(input_path)
         out_dir.book_html_path.write_text(book_html, encoding="utf-8")
 
@@ -75,12 +91,16 @@ def main(
         _run_agent(book_html, config, work_dir, out_dir, resume=resume, instructions=instructions)
     )
 
-    # --- Step 3: render cards to individual PDFs ---
-    typer.echo("Rendering cards to PDF…")
+    # --- Step 3: generate images ---
+    log.info("Generating images…")
+    generate_images_for_cards(work_dir.cards_json, out_dir.images_dir)
+
+    # --- Step 4: render cards to individual PDFs ---
+    log.info("Rendering cards to PDF…")
     pdf_paths = cards_json_to_pdfs(work_dir.cards_json, work_dir.renders_dir, config)
 
-    # --- Step 4: merge into a printable sheet ---
-    typer.echo("Merging PDFs…")
+    # --- Step 5: merge into a printable sheet ---
+    log.info("Merging PDFs…")
     merge_pdfs_to_print(pdf_paths, output_dir / "deck.pdf")
 
     typer.echo(f"Done! Output: {output_dir / 'deck.pdf'}")
