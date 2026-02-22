@@ -364,7 +364,7 @@ At this point you already started writting the complete `BBGame` object to `card
 
 Cards can be grouped into sequences using the `tag` field. A group is a set of 2–4 cards that belong together so tightly that players should handle them as a block. The visual rendering draws a continuous border around the group: the first card gets `tag: "top_end"` (border closed on top), middle cards get `tag: "middle"` (borders only on the sides), and the last card gets `tag: "bottom_end"` (border closed on the bottom).
 
-The bar for grouping is high. It is not "these cards are related" — that's true of half the deck, and it's what the title-reference system is for. The bar is: *this relationship is the point*. You are making an editorial claim that these things, taken together, carry a meaning that neither carries alone. A cause and its consequences. A principle and an example that makes it unforgettable. An emission and its sink.
+The bar for grouping is high. It is not "these cards are related" — that's true of half the deck, and it's what the title-reference system is for. The bar is: *this relationship is the point*. You are making an editorial claim that these things, taken together, carry a meaning that neither carries alone. A cause and its consequences. A principle and an example that makes it unforgettable. An emission and its sink. Expect to have at most one group per section.
 
 Mostly pairs. Occasionally a gradation of three when items in an enumeration are important enough to deserve a full card each but must be understood as a sequence. Almost never four. If you find yourself wanting to group more than four cards, you're probably creating an enumeration in disguise — use the Enumeration card type instead.
 
