@@ -11,6 +11,7 @@ Streamlit: make quality-tests → "Render Templates" page
 """
 
 import json
+import logging
 import sys
 import tempfile
 from pathlib import Path
@@ -57,36 +58,48 @@ def _all_templates_for_type(card_type: str, template_glob: str) -> list[str]:
     return matching if matching else []
 
 
+class _LogCapture(logging.Handler):
+    def __init__(self) -> None:
+        super().__init__()
+        self.records: list[logging.LogRecord] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.records.append(record)
+
+
 def _render_to_png_bytes(
     card: dict,
     template_name: str,
     visual_identity: dict | None = None,
     dpi: int = 150,
-) -> bytes:
+) -> tuple[bytes, list[logging.LogRecord]]:
     """
     Render a card dict to PNG bytes (single-page card assumed).
 
-    - card: card data dict
-    - template_name: Jinja2 template filename
-    - visual_identity: optional VisualIdentity dict (uses PREDEFINED_STYLES['classic'] if None)
-    - dpi: DPI for PDF→PNG conversion
+    Returns (png_bytes, weasyprint_log_records).
     """
     if visual_identity is None:
         visual_identity = PREDEFINED_STYLES["classic"].model_dump()
 
-    _IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_dir = Path(tmp)
-        pdf = render_card_to_pdf(
-            card,
-            template_name,
-            tmp_dir,
-            _IMAGE_CACHE_DIR,
-            card_index=0,
-            visual_identity=visual_identity,
-        )
-        pngs = pdf_to_pngs(pdf, tmp_dir / "pngs", dpi=dpi)
-        return pngs[0].read_bytes()
+    capture = _LogCapture()
+    wp_logger = logging.getLogger("weasyprint")
+    wp_logger.addHandler(capture)
+    try:
+        _IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_dir = Path(tmp)
+            pdf = render_card_to_pdf(
+                card,
+                template_name,
+                tmp_dir,
+                _IMAGE_CACHE_DIR,
+                card_index=0,
+                visual_identity=visual_identity,
+            )
+            pngs = pdf_to_pngs(pdf, tmp_dir / "pngs", dpi=dpi)
+            return pngs[0].read_bytes(), capture.records
+    finally:
+        wp_logger.removeHandler(capture)
 
 
 def run_cli() -> None:
@@ -108,18 +121,91 @@ def run_cli() -> None:
 
 def run_streamlit() -> None:
     import streamlit as st
+    from lib.models import VisualIdentity, SectionTheme
 
     st.set_page_config(layout="wide")
     st.title("Render Templates")
     st.caption("Card dict + Jinja2 template → PDF → PNG (using predefined visual identities)")
 
-    # Select visual identity style
+    # Select style: predefined or custom
+    style_options = list(PREDEFINED_STYLES.keys()) + ["Custom"]
     style_name = st.radio(
         "Visual identity style",
-        list(PREDEFINED_STYLES.keys()),
+        style_options,
         horizontal=True,
     )
-    selected_style = PREDEFINED_STYLES[style_name].model_dump()
+
+    if style_name == "Custom":
+        col1, col2 = st.columns(2)
+        with col1:
+            description = st.text_input("Description", value="Custom visual identity")
+            title_font = st.text_input("Title font", value="EB Garamond")
+        with col2:
+            body_font = st.text_input("Body font", value="Lora")
+
+        st.write("**Section theme colors:**")
+        color_cols = st.columns(3)
+        with color_cols[0]:
+            main_color = st.color_picker("Main color", "#1a1a1a")
+        with color_cols[1]:
+            dark_color = st.color_picker("Dark color", "#000000")
+        with color_cols[2]:
+            accent_color = st.color_picker("Accent color", "#FF6B6B")
+
+        vi_obj = VisualIdentity(
+            description=description,
+            title_font=title_font,
+            body_font=body_font,
+            section_themes=[
+                SectionTheme(
+                    main_color=main_color, dark_color=dark_color, accent_color=accent_color
+                )
+            ],
+        )
+        selected_style = vi_obj.model_dump()
+    else:
+        vi_obj = PREDEFINED_STYLES[style_name]
+        selected_style = vi_obj.model_dump()
+
+        # Display predefined style details
+        st.write(f"**{vi_obj.description}**")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write(f"**Title font:** {vi_obj.title_font}")
+            st.write(f"**Body font:** {vi_obj.body_font}")
+
+        with col2:
+            if vi_obj.section_themes:
+                theme = vi_obj.section_themes[0]
+                st.write("**Colors:**")
+                color_cols = st.columns(3)
+                with color_cols[0]:
+                    st.color_picker(
+                        "Main color preview",
+                        theme.main_color,
+                        disabled=True,
+                        label_visibility="collapsed",
+                    )
+                    st.caption("Main")
+                with color_cols[1]:
+                    st.color_picker(
+                        "Dark color preview",
+                        theme.dark_color,
+                        disabled=True,
+                        label_visibility="collapsed",
+                    )
+                    st.caption("Dark")
+                with color_cols[2]:
+                    st.color_picker(
+                        "Accent color preview",
+                        theme.accent_color,
+                        disabled=True,
+                        label_visibility="collapsed",
+                    )
+                    st.caption("Accent")
+
+    st.divider()
 
     for cls in get_all_schema_classes():
         type_field = cls.model_fields.get("type")
@@ -138,13 +224,17 @@ def run_streamlit() -> None:
         templates = _all_templates_for_type(card_type, cls.templates)
 
         @st.cache_data(show_spinner=False)
-        def _cached_render(card_json: str, template_name: str, style_json: str) -> bytes | str:
+        def _cached_render(
+            card_json: str, template_name: str, style_json: str
+        ) -> tuple[bytes, list[str]] | str:
             try:
-                return _render_to_png_bytes(
+                png_bytes, records = _render_to_png_bytes(
                     json.loads(card_json),
                     template_name,
                     visual_identity=json.loads(style_json),
                 )
+                warnings = [r.getMessage() for r in records if r.levelno >= logging.WARNING]
+                return png_bytes, warnings
             except Exception as e:
                 return f"{type(e).__name__}: {e}"
 
@@ -159,10 +249,13 @@ def run_streamlit() -> None:
                     st.caption(f"`{template}`")
                     with st.spinner("Rendering…"):
                         result = _cached_render(card_json, template, style_json)
-                    if isinstance(result, bytes):
-                        st.image(result)
-                    else:
+                    if isinstance(result, str):
                         st.warning(result)
+                    else:
+                        png_bytes, warnings = result
+                        st.image(png_bytes)
+                        for w in warnings:
+                            st.warning(w)
 
 
 if in_streamlit():
