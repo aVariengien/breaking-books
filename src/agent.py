@@ -57,6 +57,8 @@ async def run_agent(
 
 
 def _make_agent_tools(work_dir: WorkDir, config: Config, out_dir: OutDir) -> "McpSdkServerConfig":
+    call_count = [0]
+
     @tool(
         "quality_control",
         (
@@ -67,6 +69,19 @@ def _make_agent_tools(work_dir: WorkDir, config: Config, out_dir: OutDir) -> "Mc
         {},
     )
     async def qc_tool(args: dict[str, Any]) -> dict[str, Any]:
+        if call_count[0] >= config.max_qc_calls:
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            f"Quality control limit reached ({config.max_qc_calls} calls). "
+                            "No further QC runs are allowed. Submit the deck as-is."
+                        ),
+                    }
+                ]
+            }
+        call_count[0] += 1
         from tools.quality_control import quality_control
 
         report = await asyncio.to_thread(
