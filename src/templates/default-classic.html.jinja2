@@ -16,6 +16,8 @@
 {% set quote_size = '7pt' %}
 {% set margin = '5mm' %}
 {% set image_height = '50%' %}
+{% set section_idx = section | default(0) %}
+{% set theme = visual_identity.section_themes[section_idx] %}
 
 <html lang="en">
 <head>
@@ -95,7 +97,7 @@
       flex-direction: column;
       justify-content: space-between;
       background: #ffffff;
-      border-top: 2px solid {% if visual_identity.section_themes %}{{ visual_identity.section_themes[0].main_color }}{% else %}#ddd{% endif %};
+      border-top: 2px solid {{ theme.main_color }};
     }
 
     .title {
@@ -120,7 +122,7 @@
     .description b {
       font-weight: 600;
       color: #1a1a1a;
-      {% if visual_identity.section_themes %}border-bottom: 1px solid {{ visual_identity.section_themes[0].accent_color }};{% endif %}
+      border-bottom: 1px solid {{ theme.accent_color }};
     }
 
     .quote-section {
@@ -145,7 +147,7 @@
       top: -2mm;
       font-size: {{ body_size }};
       font-style: normal;
-      color: {% if visual_identity.section_themes %}{{ visual_identity.section_themes[0].main_color }}{% else %}#ccc{% endif %};
+      color: {{ theme.main_color }};
       opacity: 0.5;
     }
   </style>
