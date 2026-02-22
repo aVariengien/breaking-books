@@ -27,11 +27,7 @@ from schemas import Card
 CEREBRAS_MODEL = "gpt-oss-120b"
 
 LLM_REVIEW_SYSTEM = """\
-You are a meticulous editor reviewing a set of flash cards generated from a non-fiction book.
-Each card has a title, verbatim book quotes, and an image description.
-Your job is to identify concrete, actionable problems — not vague praise or minor nitpicks.
-Be direct and specific: quote the offending card title when flagging an issue.
-Respond in the same language as the cards.\
+You are a meticulous editor reviewing a set of flash cards for Breaking Books — a collaborative card game where players build mind maps from a non-fiction book. Each card should feel like a coherent piece of a larger whole: similar visual weight, similar conceptual scale, similar tone. Check for consistency throughout the deck — do the cards feel like they belong together? Identify concrete, actionable problems — not vague praise or minor nitpicks. Be direct and specific: quote the offending card title when flagging an issue. Respond in the same language as the cards.\
 """
 
 LLM_REVIEW_USER = """\
@@ -39,11 +35,11 @@ Review the following flash cards and report issues in FOUR sections:
 
 ---
 ## Verdict
-One line only. Choose exactly one: "All good", "Nit", or "Needs improvement".
+One line only. Choose exactly one: "All good", "Nit", or "Changes requested".
 - "All good": no real problems found.
-- "Nit": only minor, non-blocking issues (e.g. one slightly vague image description).
+- "Nit": only minor, non-blocking issues (e.g. one slightly vague term, one card with odd tone).
 - "Changes requested": real problems that should be fixed (wrong language, undefined key \
-terms, multiple bad image descriptions).
+terms, cards that feel inconsistent with the rest of the deck).
 
 ## 1. Undefined or under-defined terms
 Flag only jargon, coined terms, or concepts that are specific to this book or field —
@@ -52,26 +48,24 @@ DO NOT flag everyday words, common business vocabulary, or widely understood con
 (e.g. "trust", "conflict", "leadership", "accountability", "results" are all fine).
 A term should be flagged only if it is:
 - A neologism, a framework name, or a term the book uses in an unusual/specific way, AND
-- NOT explained anywhere in the card's own quotes or in any earlier card in the deck.
-For each flag: 'Card «TITLE»: the term "TERM" is specific to this book/field but never defined in the deck.'
+- NOT explained anywhere in the card's own quotes or in any other card in the deck.
+For each flag: 'Card "TITLE": the term "TERM" is specific to this book/field but never defined in the deck.'
 If no issues, write "No issues."
 
 ## 2. Language consistency
 - Identify the dominant language of the deck.
 - Flag any card (or individual quote) that is in a different language.
 - Flag any card whose language is clearly wrong, garbled, or mixed.
-For each flag: "Card «TITLE»: DESCRIPTION OF THE LANGUAGE PROBLEM."
+For each flag: "Card "TITLE": DESCRIPTION OF THE LANGUAGE PROBLEM."
 If no issues, write "No issues."
 
-## 3. Image description style
-A good image description is: photographic (real scene), no text or diagrams, specific about
-subject + lighting + mood, roughly similar length and register across all cards.
-Flag any card whose image description:
-- Describes an illustration, diagram, chart, or abstract concept rather than a real photo scene.
-- Is vague (e.g. "a person thinking") without specific visual detail.
-- Deviates strongly in length or style from the rest of the deck.
-For each flag: "Card «TITLE»: DESCRIPTION OF THE IMAGE STYLE PROBLEM."
+## 3. Image prompt consistency
+All image prompts should have a similar visual style. The deck should feel like a coherent unit.
+Flag any card whose image prompt description feels mismatched — too different in vibe,
+style, or aesthetic from the rest of the deck, except when it seems justified.
+For each flag: "Card "TITLE": image prompt feels inconsistent (DESCRIPTION)."
 If no issues, write "No issues."
+
 ---
 
 CARDS (JSON):
@@ -82,6 +76,12 @@ CARDS (JSON):
 _VERDICT_ALL_GOOD = "all good"
 _VERDICT_NIT = "nit"
 _VERDICT_CHANGES_REQUESTED = "changes requested"
+
+# Severity levels: 0=all good, 1=nit, 2=changes requested, 3=critical
+_SEVERITY_ALL_GOOD = 0
+_SEVERITY_NIT = 1
+_SEVERITY_NEEDS_IMPROVEMENT = 2
+_SEVERITY_CRITICAL = 3
 
 
 def quality_control(
@@ -115,7 +115,9 @@ def quality_control(
         sections.append(
             "## JSON structure errors\n\n" + "\n".join(f"- {e}" for e in structure_errors)
         )
-        report = _prepend_verdict("Changes requested", "\n\n".join(sections))
+        severity = _SEVERITY_CRITICAL
+        verdicts = ["All good", "Nit", "Changes requested", "Changes required"]
+        report = _prepend_verdict(verdicts[severity], "\n\n".join(sections))
         if cards_json_path.exists():
             shutil.copy(cards_json_path, out_dir.cards_json_path(version))
         out_dir.qc_report_path(version).write_text(report, encoding="utf-8")
@@ -134,13 +136,14 @@ def quality_control(
 
     # Step 3 — LLM review
     try:
-        llm_text, llm_severity = _llm_review(cards, config)
+        llm_text, llm_severity = _llm_review(cards, config.language)
         severity = max(severity, llm_severity)
         sections.append(f"## LLM review\n\n{llm_text}")
     except Exception as exc:  # noqa: BLE001
         sections.append(f"## LLM review\n\n(skipped — error: {exc})")
 
-    overall = ["All good", "Nit", "Changes requested"][severity]
+    verdicts = ["All good", "Nit", "Changes requested", "Changes required"]
+    overall = verdicts[min(severity, 3)]
     report = _prepend_verdict(overall, "\n\n".join(sections))
 
     # Save snapshot
@@ -199,31 +202,30 @@ def _check_json_structure(cards_json_path: Path) -> list[str]:
 
 def _check_section_balance(cards: list[dict], game: Any, config: Config) -> tuple[str, int]:
     """
-    Return (human-readable summary, severity) where severity is
-    0 (all good), 1 (nit), or 2 (needs improvement).
+    Return (human-readable summary, severity) where severity is:
+    0 (all good), 1 (nit), 2 (changes requested), 3 (critical).
     Checks both card distribution across sections and visual_identity.section_themes alignment.
     """
 
     total = len(cards)
     target = config.num_cards
     lines: list[str] = []
-    severity = 0
+    severity = _SEVERITY_ALL_GOOD
 
     if total == 0:
-        return "The deck is empty — no cards found.", 2
+        return "The deck is empty — no cards found.", _SEVERITY_CRITICAL
 
-    # Count vs target
-    if total < target * 0.7:
-        lines.append(
-            f"Only {total} cards present (target: {target}). "
-            "The deck is significantly under-populated."
-        )
-        severity = max(severity, 2)
-    elif total > target * 1.3:
-        lines.append(
-            f"{total} cards present (target: {target}). The deck is significantly over-populated."
-        )
-        severity = max(severity, 2)
+    # Count vs target: ±20%, but allow ±2 cards minimum
+    count_diff = abs(total - target)
+    count_tolerance = max(target * 0.2, 2)
+    if count_diff > count_tolerance:
+        if total < target:
+            lines.append(
+                f"Only {total} cards present (target: {target}). The deck is under-populated."
+            )
+        else:
+            lines.append(f"{total} cards present (target: {target}). The deck is over-populated.")
+        severity = max(severity, _SEVERITY_NEEDS_IMPROVEMENT)
     else:
         lines.append(f"{total} cards present (target: {target}). Count is within range.")
 
@@ -247,7 +249,22 @@ def _check_section_balance(cards: list[dict], game: Any, config: Config) -> tupl
         + "\n".join(dist_lines)
     )
 
-    if smallest == 0 or largest / smallest > 2.0:
+    # Check section distribution balance: allow if within ±2 OR ratio is <= 1.5
+    section_diff = largest - smallest
+    section_ratio = largest / smallest if smallest > 0 else float("inf")
+
+    if smallest == 0:
+        lines.append(
+            "Error: at least one section has 0 cards. "
+            "Every section must have at least one card, "
+            "and sections should be roughly equal in size."
+        )
+        severity = max(severity, _SEVERITY_NEEDS_IMPROVEMENT)
+    elif section_diff <= 2:
+        lines.append("All sections are well balanced.")
+    elif section_ratio <= 1.5:
+        lines.append("All sections are well balanced.")
+    elif section_ratio > 2.0:
         biggest = max(section_counts, key=lambda s: section_counts[s])
         smallest_s = min(section_counts, key=lambda s: section_counts[s])
         lines.append(
@@ -255,25 +272,22 @@ def _check_section_balance(cards: list[dict], game: Any, config: Config) -> tupl
             f"but section {smallest_s} has only {smallest}. "
             "Redistribute cards so all sections are covered roughly equally."
         )
-        severity = max(severity, 2)
-    elif largest / smallest > 1.5:
-        lines.append("Slightly uneven across sections — consider rebalancing.")
-        severity = max(severity, 1)
+        severity = max(severity, _SEVERITY_NEEDS_IMPROVEMENT)
     else:
-        lines.append("All sections are well balanced.")
-
-    # Check section themes alignment
-    num_themes = len(game.visual_identity.section_themes)
-    if num_themes == 0:
-        lines.append("\nVisual identity: No section themes defined yet.")
-        severity = max(severity, 1)
-    elif num_themes != num_sections:
         lines.append(
-            f"\nVisual identity mismatch: {num_sections} sections in cards "
+            "Slightly uneven across sections — consider rebalancing if it would no damage the relative importance of the sections and their quality."
+        )
+        severity = max(severity, _SEVERITY_NIT)
+
+    # Check section themes alignment — CRITICAL if mismatch
+    num_themes = len(game.visual_identity.section_themes)
+    if num_themes != num_sections:
+        lines.append(
+            f"\nVisual identity: CRITICAL MISMATCH — {num_sections} sections in cards "
             f"but {num_themes} section themes in visual_identity. "
             f"Update visual_identity.section_themes to match the number of sections."
         )
-        severity = max(severity, 2)
+        severity = max(severity, _SEVERITY_CRITICAL)
     else:
         lines.append(
             f"\nVisual identity: {num_themes} section themes defined (matches card sections)."
@@ -282,10 +296,10 @@ def _check_section_balance(cards: list[dict], game: Any, config: Config) -> tupl
     return "\n".join(lines), severity
 
 
-def _llm_review(cards: list[dict], config: Config) -> tuple[str, int]:
+def _llm_review(cards: list[dict], language: str | None) -> tuple[str, int]:
     """
     Ask Cerebras to review all cards. Returns (report_text, severity) where
-    severity is 0 (all good), 1 (nit), or 2 (needs improvement).
+    severity is 0 (all good), 1 (nit), or 2 (changes requested).
     """
     client = Cerebras(api_key=os.environ.get("CEREBRAS_API_KEY"))
 
@@ -308,11 +322,11 @@ def _llm_review(cards: list[dict], config: Config) -> tuple[str, int]:
     # Parse verdict from the LLM output (accept old phrasing as fallback)
     lower = text.lower()
     if _VERDICT_CHANGES_REQUESTED in lower or "needs improvement" in lower:
-        severity = 2
+        severity = _SEVERITY_NEEDS_IMPROVEMENT
     elif _VERDICT_NIT in lower:
-        severity = 1
+        severity = _SEVERITY_NIT
     else:
-        severity = 0
+        severity = _SEVERITY_ALL_GOOD
 
     return text, severity
 
