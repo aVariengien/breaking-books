@@ -177,6 +177,7 @@ When you've found a structure you're satisfied with, write it into `book_plan` a
 - `accent_color` — the pairing accent; also the ink color for texture image patterns
 
 Color tells a player which section they're holding before they read a word. Make sections visually distinct. One strong hue per section, not five mild ones. The accent color should thread through the image prompts for every card in that section — the visual connective tissue even as styles vary.
+Don't use white for any of the colors, the background is already white.
 
 #### Design principles
 
