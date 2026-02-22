@@ -65,12 +65,12 @@ def remove_empty_spans(html_content: str) -> str:
     return re.sub(pattern, "", html_content, flags=re.IGNORECASE)
 
 
-def remove_href_and_id_attributes(html_content: str) -> str:
+def remove_href_id_and_class_attributes(html_content: str) -> str:
     """
-    Remove href and id attributes from all elements.
+    Remove href, id, and class attributes from all elements.
     """
     # [\s\n]+ -> one or more whitespace or newlines before
-    pattern = r'[\s\n]+(href|id)="[^"]*"'
+    pattern = r'[\s\n]+(href|id|class)="[^"]*"'
     return re.sub(pattern, "", html_content, flags=re.IGNORECASE)
 
 
@@ -143,7 +143,7 @@ def convert_epub_to_html(
 
 def convert_html_to_clean_html(html: str) -> str:
     """
-    Clean an HTML file, removing footnotes, id/hrefs, adding unique IDs to all HTML elements.
+    Clean an HTML file, removing footnotes, id/href/class attributes, adding unique IDs to all HTML elements.
     """
 
     # Step 1: Fix directory-dependent image paths from pandoc
@@ -154,9 +154,9 @@ def convert_html_to_clean_html(html: str) -> str:
     # names are used (it splits lines differently)
     html = normalize_img_tag_whitespace(html)
 
-    # Step 3: Remove empty spans, href and id attributes -> less tokens
+    # Step 3: Remove empty spans, href/id/class attributes -> less tokens
     html = remove_empty_spans(html)
-    html = remove_href_and_id_attributes(html)
+    html = remove_href_id_and_class_attributes(html)
 
     # Step 4: Add unique IDs to be able to reference specific elements
     html = add_unique_ids(html)

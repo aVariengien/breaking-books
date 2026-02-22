@@ -12,7 +12,6 @@ from lib.registry import get_all_schema_classes
 # Placeholders (filled by build_system_prompt):
 #   {num_cards}       — target card count
 #   {cards_json_path} — absolute path to cards.json
-#   {schema_docs}     — rendered schema reference (from build_schema_docs)
 #   {max_qc_calls}    — max quality-control iterations
 #   {card_size}       — physical card size
 #   {lang_line}       — language instruction
@@ -72,9 +71,7 @@ The absolute path to cards.json is: `{cards_json_path}`
 
 One `SectionTheme` entry per section, in order. The `section` index on each card maps to the corresponding `section_themes` entry.
 
-## Card schemas
-
-{schema_docs}
+The detailed card schemas for each card type are provided in the initial message below.
 
 ## Steps
 
@@ -435,7 +432,11 @@ Call `quality_control()`. Read the report carefully. Apply suggested improvement
 INITIAL_QUERY_TEMPLATE = """\
 Begin. Plan the sections, write the cards to cards.json, then run quality_control().
 
-Here is the full book:
+## Card schemas
+
+{schema_docs}
+
+## Book
 
 <book>
 {book_html}
@@ -514,8 +515,6 @@ def build_schema_docs() -> str:
 
 def build_system_prompt(config: Config, work_dir: WorkDir) -> str:
     """Assemble the agent system prompt (without book HTML)."""
-    schema_docs = build_schema_docs()
-
     lang_line = (
         f"Write all card content in **{config.language}**."
         if config.language
@@ -525,10 +524,6 @@ def build_system_prompt(config: Config, work_dir: WorkDir) -> str:
         f"\n- User preferences: {config.user_preferences}" if config.user_preferences else ""
     )
 
-    # Escape braces in dynamic content so str.format() doesn't choke on them.
-    def _esc(s: str) -> str:
-        return s.replace("{", "{{").replace("}", "}}")
-
     return PROMPT.format(
         num_cards=config.num_cards,
         cards_json_path=work_dir.cards_json.resolve(),
@@ -536,14 +531,17 @@ def build_system_prompt(config: Config, work_dir: WorkDir) -> str:
         lang_line=lang_line,
         max_qc_calls=config.max_qc_calls,
         prefs_section=prefs_section,
-        schema_docs=_esc(schema_docs),
     )
 
 
 def build_initial_query(book_html: str) -> str:
-    """Build the initial user query that includes the full book HTML."""
+    """Build the initial user query that includes card schemas and the full book HTML."""
 
     def _esc(s: str) -> str:
         return s.replace("{", "{{").replace("}", "}}")
 
-    return INITIAL_QUERY_TEMPLATE.format(book_html=_esc(book_html))
+    schema_docs = build_schema_docs()
+    return INITIAL_QUERY_TEMPLATE.format(
+        schema_docs=_esc(schema_docs),
+        book_html=_esc(book_html),
+    )

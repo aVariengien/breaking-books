@@ -37,7 +37,7 @@ Output layout per run: `output/{timestamp}_{random}_{slug}/` with `tmp/` (agent 
 
 ### Agent (`src/agent.py`)
 
-Uses **claude-agent-sdk** (`ClaudeSDKClient`). The agent receives a single system prompt (built by `src/big_prompt.py`) that contains: role + card-writing guidelines, the full Google Fonts index, all schema docs (auto-generated from `build_schema_docs()`), config, and the full book HTML in a `<book>` tag.
+Uses **claude-agent-sdk** (`ClaudeSDKClient`). The agent receives a system prompt (built by `src/big_prompt.py`) with role + card-writing guidelines, the full Google Fonts index, and config. The initial user message contains the card schemas (from `build_schema_docs()`) and the full book HTML in a `<book>` tag.
 
 - Allowed tools: `Read`, `Write`, `Edit`, `Glob`, `mcp__bb__quality_control`
 - `permission_mode="acceptEdits"`, `cwd=work_dir.root`, model: `haiku`

@@ -281,7 +281,7 @@ def _show_results(
     if existing_card_pdfs and (not versions or new_version):
         deck_path = _next_deck_path(out_dir)
         with st.spinner(f"Building {deck_path.name}…"):
-            merge_pdfs_to_print(existing_card_pdfs, deck_path)
+            merge_pdfs_to_print(existing_card_pdfs, deck_path, card_size=config.card_size)
         versions = _deck_versions(out_dir)
 
     # cards.json download (always available)

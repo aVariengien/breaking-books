@@ -29,6 +29,7 @@ def main(
     ),
     num_cards: int = typer.Option(15, help="Target number of cards"),
     card_size: str = typer.Option("A6", help="Card size: A5 or A6"),
+    model: str = typer.Option("haiku", help="Model: haiku, sonnet, or opus"),
     language: str | None = typer.Option(None, help="Output language (default: detect from book)"),
     max_qc_calls: int = typer.Option(3, help="Maximum quality control iterations"),
     user_preferences: str = typer.Option("", help="Free-text preferences forwarded to the agent"),
@@ -55,6 +56,7 @@ def main(
     config = Config(
         num_cards=num_cards,
         card_size=card_size,  # type: ignore[arg-type]
+        model=model,  # type: ignore[arg-type]
         language=language,
         max_qc_calls=max_qc_calls,
         user_preferences=user_preferences,
@@ -86,7 +88,7 @@ def main(
 
     # --- Step 4: merge into a printable sheet ---
     logger.info("Merging PDFs…")
-    merge_pdfs_to_print(pdf_paths, output_dir / "deck.pdf")
+    merge_pdfs_to_print(pdf_paths, output_dir / "deck.pdf", card_size=config.card_size)
 
     typer.echo(f"Done! Output: {output_dir / 'deck.pdf'}")
 

@@ -145,13 +145,24 @@ def _generate_diagram_gemini(prompt: str, size: tuple[int, int], cache_dir: Path
         ),
     )
 
-    for part in response.candidates[0].content.parts:
-        img = part.as_image()
-        if img is not None:
-            img.save(str(cache_path))
-            return cache_path
+    if not response.candidates:
+        raise RuntimeError(f"Gemini returned no candidates for prompt: {prompt!r}")
+    candidate = response.candidates[0]
+    content = candidate.content
+    if content is None or content.parts is None:
+        raise RuntimeError(f"Gemini returned empty content for prompt: {prompt!r}")
 
-    raise RuntimeError(f"Gemini returned no image for prompt: {prompt!r}")
+    image_bytes: bytes | None = None
+    for part in content.parts:
+        if part.inline_data is not None:
+            image_bytes = part.inline_data.data
+            break
+
+    if image_bytes is None:
+        raise RuntimeError(f"Gemini returned no image for prompt: {prompt!r}")
+
+    cache_path.write_bytes(image_bytes)
+    return cache_path
 
 
 def get_diagram_image_base64(prompt: str, images_dir: Path, size: tuple[int, int] = (400, 300)) -> str | None:
@@ -165,6 +176,7 @@ def get_diagram_image_base64(prompt: str, images_dir: Path, size: tuple[int, int
         return base64.b64encode(path.read_bytes()).decode()
     except Exception as e:
         import traceback
+
         print(f"[get_diagram_image_base64] ERROR: {e}")
         traceback.print_exc()
         return None

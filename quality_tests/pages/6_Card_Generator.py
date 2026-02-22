@@ -14,10 +14,10 @@ from pathlib import Path
 ROOT = Path(__file__).parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-import streamlit as st
+import streamlit as st  # noqa: E402
 from cerebras.cloud.sdk import Cerebras  # noqa: E402
 
-from big_prompt import build_system_prompt  # noqa: E402
+from big_prompt import build_initial_query, build_system_prompt  # noqa: E402
 from lib.models import BBGame, Config, WorkDir  # noqa: E402
 from lib.streamlit_utils import in_streamlit  # noqa: E402
 from tools.extract_book_content import extract_book_content  # noqa: E402
@@ -294,7 +294,9 @@ def run_streamlit() -> None:
 
     # ---- Step 1: Load book ----
     suffix = selected_file.suffix.lower()
-    step1_label = "Step 1 — Extract book (EPUB → HTML)" if suffix == ".epub" else "Step 1 — Load book"
+    step1_label = (
+        "Step 1 — Extract book (EPUB → HTML)" if suffix == ".epub" else "Step 1 — Load book"
+    )
     st.subheader(step1_label)
 
     book_html = _load_book(str(selected_file))
@@ -310,7 +312,9 @@ def run_streamlit() -> None:
 
     with tempfile.TemporaryDirectory() as _tmp:
         work_dir = WorkDir.create(Path(_tmp))
-        base_prompt = build_system_prompt(book_html, config, work_dir)
+        system_prompt = build_system_prompt(config, work_dir)
+        initial_query = build_initial_query(book_html)
+        base_prompt = system_prompt + "\n\n" + initial_query
 
     full_prompt = FAST_MODE_PREFIX + base_prompt
 
