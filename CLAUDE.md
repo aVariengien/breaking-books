@@ -142,7 +142,7 @@ Jinja2 + WeasyPrint HTML templates that render cards to PDF. Each schema class d
 
 7. **Shared macros** (`_card_base.html.jinja2`):
    - Import: `{% from '_card_base.html.jinja2' import type_icon_class, tag_class, top_band_html, css_imports, shared_css %}`
-   - `css_imports(font_face_css)` — FA 6 CDN + local `@font-face` rules (font_face_css always passed from render)
+   - `css_imports(font_face_css, font_awesome_css)` — both passed from render_card_to_pdf (which fetches and caches them from visual_identity)
    - `shared_css(visual_identity, theme)` — base CSS: `@page`, border, top band, title, `<b>` underline
    - `top_band_html(type, section)` — renders the 9mm dark band with section label + type icon
    - `tag_class(tag)` — returns CSS class string (` tag-top`, ` tag-middle`, ` tag-bottom`, or empty)

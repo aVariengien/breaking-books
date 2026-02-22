@@ -10,7 +10,6 @@ CLI:      python quality_tests/pages/2_Render_Templates.py
 Streamlit: make quality-tests → "Render Templates" page
 """
 
-import json
 import sys
 import tempfile
 from pathlib import Path
@@ -19,7 +18,6 @@ ROOT = Path(__file__).parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from lib.example_cards import build_example_cards  # noqa: E402
-from lib.font_cache import fetch_and_cache_font_awesome, fetch_and_cache_fonts  # noqa: E402
 from lib.models import VisualIdentity  # noqa: E402
 from lib.registry import get_all_schema_classes, get_templates_for_schema  # noqa: E402
 from lib.streamlit_utils import in_streamlit  # noqa: E402
@@ -27,7 +25,6 @@ from tools.pdf_to_pngs import pdf_to_pngs  # noqa: E402
 from tools.render_template import (  # noqa: E402
     PREDEFINED_STYLES,
     RenderResult,
-    build_google_fonts_url,
     render_all_templates,
     render_card_to_pdf,
     render_one_template,
@@ -97,10 +94,6 @@ def run_cli() -> None:
             print(f"Using: {demo_type} / {tmpl}")
             with tempfile.TemporaryDirectory() as tmp:
                 tmp_dir = Path(tmp)
-                font_face_css = fetch_and_cache_fonts(
-                    build_google_fonts_url(VisualIdentity.model_validate(vi_classic))
-                )
-                font_awesome_css = fetch_and_cache_font_awesome()
                 for idx, (tag_val, label) in enumerate(zip(_TAG_VALUES, _TAG_LABELS)):
                     tagged = _card_with_tag(base_card, tag_val)
                     subdir = tmp_dir / f"tag_{idx}"
@@ -112,8 +105,6 @@ def run_cli() -> None:
                             subdir,
                             _IMAGE_CACHE_DIR,
                             card_index=0,
-                            font_face_css=font_face_css,
-                            font_awesome_css=font_awesome_css,
                             visual_identity=vi_classic,
                         )
                         pngs = pdf_to_pngs(pdf, subdir / "pngs", dpi=150)
@@ -125,7 +116,7 @@ def run_cli() -> None:
 
 def run_streamlit() -> None:
     import streamlit as st
-    from lib.models import VisualIdentity, SectionTheme
+    from lib.models import SectionTheme
 
     st.set_page_config(layout="wide")
     st.title("Render Templates")
@@ -214,15 +205,6 @@ def run_streamlit() -> None:
     output_dir = _RENDERS_DIR / "streamlit"
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    @st.cache_data(show_spinner="Fetching fonts…")
-    def cached_font_css(style_json: str) -> str:
-        vi = VisualIdentity.model_validate(json.loads(style_json))
-        url = build_google_fonts_url(vi, extra_fonts=["EB Garamond"])
-        return fetch_and_cache_fonts(url)
-
-    font_face_css = cached_font_css(json.dumps(selected_style, sort_keys=True, default=str))
-    font_awesome_css = fetch_and_cache_font_awesome()
-
     for cls in get_all_schema_classes():
         type_field = cls.model_fields.get("type")
         card_type = type_field.default if type_field else "unknown"
@@ -254,8 +236,6 @@ def run_streamlit() -> None:
                             template_path.stem,
                             output_dir,
                             _IMAGE_CACHE_DIR,
-                            font_face_css,
-                            font_awesome_css,
                             selected_style,
                         )
                         png_dir = (

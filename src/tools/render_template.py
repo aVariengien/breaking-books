@@ -89,8 +89,6 @@ def render_one_template(
     template_stem: str,
     output_dir: Path,
     images_dir: Path,
-    font_face_css: str,
-    font_awesome_css: str,
     visual_identity: dict,
 ) -> RenderResult:
     """Render one (card_type, template) and return result with captured warnings."""
@@ -106,8 +104,6 @@ def render_one_template(
             subdir,
             images_dir,
             card_index=0,
-            font_face_css=font_face_css,
-            font_awesome_css=font_awesome_css,
             visual_identity=visual_identity,
         )
         warnings = [
@@ -145,13 +141,6 @@ def render_all_templates(
     images_dir.mkdir(parents=True, exist_ok=True)
     vi = visual_identity
 
-    # definition-lexicon always uses EB Garamond for the word; include it
-    google_url = build_google_fonts_url(
-        VisualIdentity.model_validate(vi), extra_fonts=["EB Garamond"]
-    )
-    font_face_css = fetch_and_cache_fonts(google_url)
-    font_awesome_css = fetch_and_cache_font_awesome()
-
     tasks: list[tuple] = []
     for cls in get_all_schema_classes():
         type_field = cls.model_fields.get("type")
@@ -168,8 +157,6 @@ def render_all_templates(
                     template_path.stem,
                     output_dir,
                     images_dir,
-                    font_face_css,
-                    font_awesome_css,
                     vi,
                 )
             )
@@ -215,20 +202,29 @@ def render_card_to_pdf(
     images_dir: Path,
     *,
     card_index: int,
-    font_face_css: str,
-    font_awesome_css: str,
     visual_identity: dict | VisualIdentity,
 ) -> Path:
     """
     Render a single card dict with the named Jinja2 template to a PDF file.
 
     - Loads the template from src/templates/.
+    - Fetches and caches font_face_css (from visual_identity) and font_awesome_css.
     - Exposes get_image(prompt, width, height) callable to the template.
     - Passes visual_identity (fonts, colors) to template for styling.
     - Assumes all cards render at A6 size (scaling happens at PDF merge stage).
     - Writes output to `output_dir/card-{card_index}.pdf`.
     - Returns the path to the generated PDF.
     """
+    vi_obj = (
+        visual_identity
+        if isinstance(visual_identity, VisualIdentity)
+        else VisualIdentity.model_validate(visual_identity)
+    )
+    font_face_css = fetch_and_cache_fonts(
+        build_google_fonts_url(vi_obj, extra_fonts=["EB Garamond"])
+    )
+    font_awesome_css = fetch_and_cache_font_awesome()
+
     env = Environment(
         loader=FileSystemLoader(str(_TEMPLATES_DIR)),
         autoescape=select_autoescape(["html", "xml"]),
@@ -247,12 +243,6 @@ def render_card_to_pdf(
         """Generate or retrieve a Gemini Flash diagram image as base64. Called from Jinja2 templates."""
         return get_diagram_image_base64(prompt, images_dir, size=(width, height))
 
-    # Pass visual_identity as-is (not flattened); card fields override if names collide
-    vi_obj = (
-        visual_identity
-        if isinstance(visual_identity, VisualIdentity)
-        else VisualIdentity.model_validate(visual_identity)
-    )
     template_vars["visual_identity"] = vi_obj.model_dump()
     template_vars["font_face_css"] = font_face_css
     template_vars["font_awesome_css"] = font_awesome_css
@@ -322,11 +312,6 @@ def cards_json_to_pdfs(
                 return random.choice(options).name
         raise ValueError(f"No template found for card type {card_type!r}")
 
-    # definition-lexicon always uses EB Garamond for the word; include it
-    google_url = build_google_fonts_url(game.visual_identity, extra_fonts=["EB Garamond"])
-    font_face_css = fetch_and_cache_fonts(google_url)
-    font_awesome_css = fetch_and_cache_font_awesome()
-
     tasks = [
         (i, card, _resolve_template(card), _visual_identity_for_card(card))
         for i, card in enumerate(cards)
@@ -339,8 +324,6 @@ def cards_json_to_pdfs(
             output_dir,
             images_dir,
             card_index=i,
-            font_face_css=font_face_css,
-            font_awesome_css=font_awesome_css,
             visual_identity=vi,
         )
         for i, card, template_name, vi in tasks
