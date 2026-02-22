@@ -19,14 +19,18 @@ ROOT = Path(__file__).parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from lib.example_cards import build_example_cards  # noqa: E402
+from lib.font_cache import fetch_and_cache_fonts  # noqa: E402
+from lib.models import VisualIdentity  # noqa: E402
 from lib.registry import get_all_schema_classes, get_templates_for_schema  # noqa: E402
 from lib.streamlit_utils import in_streamlit  # noqa: E402
 from tools.pdf_to_pngs import pdf_to_pngs  # noqa: E402
 from tools.render_template import (  # noqa: E402
     PREDEFINED_STYLES,
     RenderResult,
+    build_google_fonts_url,
     render_all_templates,
     render_card_to_pdf,
+    render_one_template,
 )
 
 _IMAGE_CACHE_DIR = ROOT / "data" / "image_cache"
@@ -93,6 +97,9 @@ def run_cli() -> None:
             print(f"Using: {demo_type} / {tmpl}")
             with tempfile.TemporaryDirectory() as tmp:
                 tmp_dir = Path(tmp)
+                font_face_css = fetch_and_cache_fonts(
+                    build_google_fonts_url(VisualIdentity.model_validate(vi_classic))
+                )
                 for idx, (tag_val, label) in enumerate(zip(_TAG_VALUES, _TAG_LABELS)):
                     tagged = _card_with_tag(base_card, tag_val)
                     subdir = tmp_dir / f"tag_{idx}"
@@ -104,6 +111,7 @@ def run_cli() -> None:
                             subdir,
                             _IMAGE_CACHE_DIR,
                             card_index=0,
+                            font_face_css=font_face_css,
                             visual_identity=vi_classic,
                         )
                         pngs = pdf_to_pngs(pdf, subdir / "pngs", dpi=150)
@@ -201,17 +209,16 @@ def run_streamlit() -> None:
 
     st.divider()
 
-    @st.cache_data(show_spinner="Rendering all templates…")
-    def _cached_all_renders(style_json: str) -> dict[tuple[str, str], tuple[bytes, list[str]]]:
-        output_dir = _RENDERS_DIR / "streamlit"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        results = render_all_templates(
-            output_dir, _IMAGE_CACHE_DIR, json.loads(style_json), EXAMPLE_CARDS
-        )
-        return _results_to_png_lookup(results, output_dir)
+    output_dir = _RENDERS_DIR / "streamlit"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    style_json = json.dumps(selected_style, sort_keys=True, default=str)
-    lookup = _cached_all_renders(style_json)
+    @st.cache_data(show_spinner="Fetching fonts…")
+    def cached_font_css(style_json: str) -> str:
+        vi = VisualIdentity.model_validate(json.loads(style_json))
+        url = build_google_fonts_url(vi, extra_fonts=["EB Garamond"])
+        return fetch_and_cache_fonts(url)
+
+    font_face_css = cached_font_css(json.dumps(selected_style, sort_keys=True, default=str))
 
     for cls in get_all_schema_classes():
         type_field = cls.model_fields.get("type")
@@ -227,22 +234,36 @@ def run_streamlit() -> None:
             )
             continue
 
-        templates = [p.name for p in get_templates_for_schema(cls)]
+        templates = [p for p in get_templates_for_schema(cls)]
         COLS_PER_ROW = 3
         for i in range(0, len(templates), COLS_PER_ROW):
             chunk = templates[i : i + COLS_PER_ROW]
             cols = st.columns(COLS_PER_ROW)
-            for col, template in zip(cols, chunk):
+            for col, template_path in zip(cols, chunk):
                 with col:
-                    st.caption(f"`{template}`")
-                    result = lookup.get((card_type, template))
-                    if result is None:
-                        st.warning("Not rendered")
-                    else:
-                        png_bytes, warnings = result
-                        st.image(png_bytes)
-                        for w in warnings:
-                            st.warning(w)
+                    template_name = template_path.name
+                    st.caption(f"`{template_name}`")
+                    with st.spinner("Rendering…"):
+                        result = render_one_template(
+                            card,
+                            card_type,
+                            template_name,
+                            template_path.stem,
+                            output_dir,
+                            _IMAGE_CACHE_DIR,
+                            font_face_css,
+                            selected_style,
+                        )
+                        png_dir = (
+                            output_dir
+                            / "pngs"
+                            / f"{result.card_type}_{Path(result.template_name).stem}"
+                        )
+                        pngs = pdf_to_pngs(result.pdf_path, png_dir, dpi=150)
+                        png_bytes = pngs[0].read_bytes() if pngs else b""
+                    st.image(png_bytes)
+                    for w in result.warnings:
+                        st.warning(w)
 
 
 if in_streamlit():

@@ -29,11 +29,11 @@ make test                 # ty check src/ && ruff check src/ && pytest tests/
 ```
 load_book(epub)           →  HTML            (cached to OUT/book.html)
 run_agent(...)            →  TMP/cards.json  (BBGame JSON, session_id to OUT/session_id.txt)
-cards_json_to_pdfs(...)   →  TMP/renders/*.pdf (images generated on-demand, cached to OUT/images/)
+cards_json_to_pdfs(...)   →  TMP/renders/*.pdf (images on-demand → OUT/images/, fonts cached to data/fonts/)
 merge_pdfs_to_print(...)  →  output_dir/deck.pdf
 ```
 
-Output layout per run: `output/{timestamp}_{random}_{slug}/` with `tmp/` (agent scratch) and `out/` (persistent: versioned snapshots, QC reports, session_id, logs, image cache).
+Output layout per run: `output/{timestamp}_{random}_{slug}/` with `tmp/` (agent scratch) and `out/` (persistent: versioned snapshots, QC reports, session_id, logs, image cache). Fonts cached globally in `data/fonts/`.
 
 ### Agent (`src/agent.py`)
 
@@ -125,7 +125,7 @@ Jinja2 + WeasyPrint HTML templates that render cards to PDF. Each schema class d
 
 4. **Fonts**:
    - Use `visual_identity.title_font` and `visual_identity.body_font` in CSS
-   - Fonts are served via Google Fonts; add `@import url()` in template `<style>` to load them
+   - Font cache (`src/lib/font_cache.py`): fetches Google Fonts CSS and font files, caches both in `data/fonts/` (CSS in `data/fonts/css/`, font files as `{hash}.{ext}`). Supports .woff2, .woff, .ttf, .otf. Idempotent: no Google requests after first run. Templates receive `font_face_css` with local `@font-face` rules.
    - Always include fallback fonts: `font-family: {% if visual_identity.title_font %}'{{ visual_identity.title_font }}', {% endif %}'EB Garamond', serif;`
    - The agent chooses Google Fonts that are available; template ensures graceful fallback
 
@@ -142,7 +142,7 @@ Jinja2 + WeasyPrint HTML templates that render cards to PDF. Each schema class d
 
 7. **Shared macros** (`_card_base.html.jinja2`):
    - Import: `{% from '_card_base.html.jinja2' import type_icon_class, tag_class, top_band_html, css_imports, shared_css %}`
-   - `css_imports(visual_identity)` — FA 6 CDN + Google Fonts `@import` statements
+   - `css_imports(font_face_css)` — FA 6 CDN + local `@font-face` rules (font_face_css always passed from render)
    - `shared_css(visual_identity, theme)` — base CSS: `@page`, border, top band, title, `<b>` underline
    - `top_band_html(type, section)` — renders the 9mm dark band with section label + type icon
    - `tag_class(tag)` — returns CSS class string (` tag-top`, ` tag-middle`, ` tag-bottom`, or empty)

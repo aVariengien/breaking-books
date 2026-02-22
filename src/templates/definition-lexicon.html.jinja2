@@ -12,9 +12,8 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    {{ css_imports(visual_identity) }}
-    /* Always import EB Garamond for the word — the dictionary voice */
-    @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;1,400;1,600&display=swap');
+    {{ css_imports(font_face_css) }}
+    /* EB Garamond for the word (dictionary voice) is included in font_face_css */
 
     {{ shared_css(visual_identity, theme) }}
 
