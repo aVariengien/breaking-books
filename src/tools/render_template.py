@@ -10,7 +10,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from joblib import Parallel, delayed
 from weasyprint import HTML
 
-from lib.font_cache import fetch_and_cache_fonts
+from lib.font_cache import fetch_and_cache_font_awesome, fetch_and_cache_fonts
 from lib.font_metadata import FONT_SPECS
 from lib.models import Config, SectionTheme, VisualIdentity
 from lib.registry import get_all_schema_classes, get_templates_for_schema
@@ -90,6 +90,7 @@ def render_one_template(
     output_dir: Path,
     images_dir: Path,
     font_face_css: str,
+    font_awesome_css: str,
     visual_identity: dict,
 ) -> RenderResult:
     """Render one (card_type, template) and return result with captured warnings."""
@@ -106,6 +107,7 @@ def render_one_template(
             images_dir,
             card_index=0,
             font_face_css=font_face_css,
+            font_awesome_css=font_awesome_css,
             visual_identity=visual_identity,
         )
         warnings = [
@@ -148,6 +150,7 @@ def render_all_templates(
         VisualIdentity.model_validate(vi), extra_fonts=["EB Garamond"]
     )
     font_face_css = fetch_and_cache_fonts(google_url)
+    font_awesome_css = fetch_and_cache_font_awesome()
 
     tasks: list[tuple] = []
     for cls in get_all_schema_classes():
@@ -166,6 +169,7 @@ def render_all_templates(
                     output_dir,
                     images_dir,
                     font_face_css,
+                    font_awesome_css,
                     vi,
                 )
             )
@@ -212,6 +216,7 @@ def render_card_to_pdf(
     *,
     card_index: int,
     font_face_css: str,
+    font_awesome_css: str,
     visual_identity: dict | VisualIdentity,
 ) -> Path:
     """
@@ -250,6 +255,7 @@ def render_card_to_pdf(
     )
     template_vars["visual_identity"] = vi_obj.model_dump()
     template_vars["font_face_css"] = font_face_css
+    template_vars["font_awesome_css"] = font_awesome_css
 
     template_vars["get_image"] = get_image
     template_vars["get_diagram_image"] = get_diagram_image
@@ -319,6 +325,7 @@ def cards_json_to_pdfs(
     # definition-lexicon always uses EB Garamond for the word; include it
     google_url = build_google_fonts_url(game.visual_identity, extra_fonts=["EB Garamond"])
     font_face_css = fetch_and_cache_fonts(google_url)
+    font_awesome_css = fetch_and_cache_font_awesome()
 
     tasks = [
         (i, card, _resolve_template(card), _visual_identity_for_card(card))
@@ -333,6 +340,7 @@ def cards_json_to_pdfs(
             images_dir,
             card_index=i,
             font_face_css=font_face_css,
+            font_awesome_css=font_awesome_css,
             visual_identity=vi,
         )
         for i, card, template_name, vi in tasks

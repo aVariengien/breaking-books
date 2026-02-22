@@ -125,7 +125,7 @@ Jinja2 + WeasyPrint HTML templates that render cards to PDF. Each schema class d
 
 4. **Fonts**:
    - Use `visual_identity.title_font` and `visual_identity.body_font` in CSS
-   - Font cache (`src/lib/font_cache.py`): fetches Google Fonts CSS and font files, caches both in `data/fonts/` (CSS in `data/fonts/css/`, font files as `{hash}.{ext}`). Supports .woff2, .woff, .ttf, .otf. Idempotent: no Google requests after first run. Templates receive `font_face_css` with local `@font-face` rules.
+   - Font cache (`src/lib/font_cache.py`): `fetch_and_cache_css(url)` fetches CSS and font files, caches in `data/fonts/` (CSS in `data/fonts/css/`, fonts as `{hash}.{ext}`). Supports .woff2, .woff, .ttf, .otf. Idempotent. `fetch_and_cache_fonts` (Google) and `fetch_and_cache_font_awesome` are thin wrappers. Templates receive `font_face_css` and `font_awesome_css` with local `@font-face` rules.
    - Always include fallback fonts: `font-family: {% if visual_identity.title_font %}'{{ visual_identity.title_font }}', {% endif %}'EB Garamond', serif;`
    - The agent chooses Google Fonts that are available; template ensures graceful fallback
 

@@ -18,11 +18,16 @@ ROOT = Path(__file__).parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from lib.example_cards import build_example_cards  # noqa: E402
+from lib.font_cache import fetch_and_cache_font_awesome, fetch_and_cache_fonts  # noqa: E402
 from lib.registry import get_all_schema_classes, get_templates_for_schema  # noqa: E402
 from lib.streamlit_utils import in_streamlit  # noqa: E402
 from tools.merge_pdfs import merge_pdfs_to_print  # noqa: E402
 from tools.pdf_to_pngs import pdf_to_pngs  # noqa: E402
-from tools.render_template import PREDEFINED_STYLES, render_card_to_pdf  # noqa: E402
+from tools.render_template import (  # noqa: E402
+    PREDEFINED_STYLES,
+    build_google_fonts_url,
+    render_card_to_pdf,
+)
 
 EXAMPLE_CARDS = build_example_cards()
 _IMAGE_CACHE_DIR = ROOT / "data" / "image_cache"
@@ -51,7 +56,9 @@ def _make_sample_cards(n: int, out_dir: Path) -> list[Path]:
         raise ValueError("No example cards available; add get_examples() to schemas")
     out_dir.mkdir(parents=True, exist_ok=True)
     _IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    vi = PREDEFINED_STYLES["classic"].model_dump()
+    vi = PREDEFINED_STYLES["classic"]
+    font_face_css = fetch_and_cache_fonts(build_google_fonts_url(vi, extra_fonts=["EB Garamond"]))
+    font_awesome_css = fetch_and_cache_font_awesome()
     pdfs = []
     for i in range(n):
         card_type, template_name = _CARD_TEMPLATE_PAIRS[i % len(_CARD_TEMPLATE_PAIRS)]
@@ -64,7 +71,9 @@ def _make_sample_cards(n: int, out_dir: Path) -> list[Path]:
                 out_dir,
                 _IMAGE_CACHE_DIR,
                 card_index=i,
-                visual_identity=vi,
+                font_face_css=font_face_css,
+                font_awesome_css=font_awesome_css,
+                visual_identity=vi.model_dump(),
             )
         )
     return pdfs

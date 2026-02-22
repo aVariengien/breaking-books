@@ -13,28 +13,33 @@ from pathlib import Path
 ROOT = Path(__file__).parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
+from lib.example_cards import build_example_cards  # noqa: E402
+from lib.font_cache import fetch_and_cache_font_awesome, fetch_and_cache_fonts  # noqa: E402
 from lib.streamlit_utils import in_streamlit  # noqa: E402
 from tools.pdf_to_pngs import pdf_to_pngs  # noqa: E402
-from tools.render_template import render_card_to_pdf  # noqa: E402
+from tools.render_template import (  # noqa: E402
+    PREDEFINED_STYLES,
+    build_google_fonts_url,
+    render_card_to_pdf,
+)
 
-_EXAMPLE_CARD = {
-    "type": "concept",
-    "section": 0,
-    "title": "The Ratchet Effect",
-    "book_quotes": [
-        "Once a cultural or technological innovation is adopted, it tends to persist.",
-        "Humans, unlike other animals, build on the achievements of prior generations.",
-    ],
-    "image_description": "Stone staircase carved into a cliff, winding up into the mist.",
-    "card_size": "A6",
-    "language": "en",
-}
+_EXAMPLE_CARD = build_example_cards()["default"]
 
 
 def _make_sample_pdf(tmp_dir: Path) -> Path:
     images_dir = tmp_dir / "images"
+    vi = PREDEFINED_STYLES["classic"]
+    font_face_css = fetch_and_cache_fonts(build_google_fonts_url(vi, extra_fonts=["EB Garamond"]))
+    font_awesome_css = fetch_and_cache_font_awesome()
     return render_card_to_pdf(
-        _EXAMPLE_CARD, "concept-image-left.html.jinja2", tmp_dir, images_dir, card_index=0
+        _EXAMPLE_CARD,
+        "default-classic.html.jinja2",
+        tmp_dir,
+        images_dir,
+        card_index=0,
+        font_face_css=font_face_css,
+        font_awesome_css=font_awesome_css,
+        visual_identity=vi.model_dump(),
     )
 
 

@@ -37,8 +37,8 @@
 <i class="fa-solid {{ type_icon_class(card_type) }} card-corner-icon"></i>
 {%- endmacro -%}
 
-{%- macro css_imports(font_face_css) -%}
-@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css');
+{%- macro css_imports(font_face_css, font_awesome_css) -%}
+{{ font_awesome_css }}
 {{ font_face_css }}
 {%- endmacro -%}
 

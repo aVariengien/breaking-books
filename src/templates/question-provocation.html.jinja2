@@ -11,7 +11,7 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    {{ css_imports(font_face_css) }}
+    {{ css_imports(font_face_css, font_awesome_css) }}
     {{ shared_css(visual_identity, theme) }}
 
     .card { position: relative; }
@@ -19,7 +19,7 @@
     /* Texture as background image */
     .bg-texture {
       position: absolute;
-      inset: 0;
+      top: 0; right: 0; bottom: 0; left: 0;
       background-size: cover;
       background-position: center;
       opacity: 0.18;

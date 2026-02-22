@@ -19,7 +19,7 @@ ROOT = Path(__file__).parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from lib.example_cards import build_example_cards  # noqa: E402
-from lib.font_cache import fetch_and_cache_fonts  # noqa: E402
+from lib.font_cache import fetch_and_cache_font_awesome, fetch_and_cache_fonts  # noqa: E402
 from lib.models import VisualIdentity  # noqa: E402
 from lib.registry import get_all_schema_classes, get_templates_for_schema  # noqa: E402
 from lib.streamlit_utils import in_streamlit  # noqa: E402
@@ -100,6 +100,7 @@ def run_cli() -> None:
                 font_face_css = fetch_and_cache_fonts(
                     build_google_fonts_url(VisualIdentity.model_validate(vi_classic))
                 )
+                font_awesome_css = fetch_and_cache_font_awesome()
                 for idx, (tag_val, label) in enumerate(zip(_TAG_VALUES, _TAG_LABELS)):
                     tagged = _card_with_tag(base_card, tag_val)
                     subdir = tmp_dir / f"tag_{idx}"
@@ -112,6 +113,7 @@ def run_cli() -> None:
                             _IMAGE_CACHE_DIR,
                             card_index=0,
                             font_face_css=font_face_css,
+                            font_awesome_css=font_awesome_css,
                             visual_identity=vi_classic,
                         )
                         pngs = pdf_to_pngs(pdf, subdir / "pngs", dpi=150)
@@ -219,6 +221,7 @@ def run_streamlit() -> None:
         return fetch_and_cache_fonts(url)
 
     font_face_css = cached_font_css(json.dumps(selected_style, sort_keys=True, default=str))
+    font_awesome_css = fetch_and_cache_font_awesome()
 
     for cls in get_all_schema_classes():
         type_field = cls.model_fields.get("type")
@@ -252,6 +255,7 @@ def run_streamlit() -> None:
                             output_dir,
                             _IMAGE_CACHE_DIR,
                             font_face_css,
+                            font_awesome_css,
                             selected_style,
                         )
                         png_dir = (

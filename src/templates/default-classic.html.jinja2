@@ -10,14 +10,22 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    {{ css_imports(font_face_css) }}
+    {{ css_imports(font_face_css, font_awesome_css) }}
     {{ shared_css(visual_identity, theme) }}
 
     .image-zone {
       flex: 0 0 52mm;
       overflow: hidden;
       background: {{ theme.dark_color }};
-      clip-path: polygon(0 0, 100% 0, 100% 82%, 0% 100%);
+      position: relative;
+    }
+    /* Diagonal cut effect via gradient overlay (WeasyPrint doesn't support clip-path polygon) */
+    .image-zone::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(165deg, transparent 0%, transparent 82%, #ffffff 82%);
+      pointer-events: none;
     }
     .image-zone img {
       width: 100%;
