@@ -1,7 +1,9 @@
 """Render card dicts to PDF via Jinja2 + WeasyPrint."""
 
 import json
+import logging
 import random
+from dataclasses import dataclass
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -35,6 +37,127 @@ def build_google_fonts_url(vi: VisualIdentity) -> str:
         params.append(spec)
     family_str = "&family=".join(params)
     return f"https://fonts.googleapis.com/css2?family={family_str}&display=swap"
+
+
+# Warnings from WeasyPrint parsing external CDN CSS (Google Fonts, Font Awesome).
+# Their stylesheets use modern CSS (text-rendering, @media prefers-reduced-motion, @keyframes)
+# that WeasyPrint's parser doesn't fully support. Output is fine; we filter these out.
+HARMLESS_CSS_PATTERNS = (
+    "Ignored `text-rendering:auto`",
+    "Expected a media type, got",
+    "Invalid media type",
+    "Unknown rule <AtRule @keyframes",
+)
+
+
+def is_harmless_weasyprint_warning(msg: str) -> bool:
+    """Return True if the WeasyPrint warning is known and harmless."""
+    return any(p in msg for p in HARMLESS_CSS_PATTERNS)
+
+
+@dataclass
+class RenderResult:
+    """Result of rendering one (card_type, template) combination."""
+
+    card_type: str
+    template_name: str
+    pdf_path: Path
+    warnings: list[str]
+
+
+class LogCapture(logging.Handler):
+    """Capture log records for inspection."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.records: list[logging.LogRecord] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.records.append(record)
+
+
+def _render_one_template(
+    card: dict,
+    card_type: str,
+    template_name: str,
+    template_stem: str,
+    output_dir: Path,
+    images_dir: Path,
+    visual_identity: dict,
+) -> RenderResult:
+    """Render one (card_type, template) and return result with captured warnings."""
+    subdir = output_dir / f"{card_type}_{template_stem}"
+    subdir.mkdir(parents=True, exist_ok=True)
+    capture = LogCapture()
+    wp_logger = logging.getLogger("weasyprint")
+    wp_logger.addHandler(capture)
+    try:
+        pdf_path = render_card_to_pdf(
+            card,
+            template_name,
+            subdir,
+            images_dir,
+            card_index=0,
+            visual_identity=visual_identity,
+        )
+        warnings = [
+            r.getMessage()
+            for r in capture.records
+            if r.levelno >= logging.WARNING and not is_harmless_weasyprint_warning(r.getMessage())
+        ]
+        return RenderResult(
+            card_type=card_type,
+            template_name=template_name,
+            pdf_path=pdf_path,
+            warnings=warnings,
+        )
+    finally:
+        wp_logger.removeHandler(capture)
+
+
+def render_all_templates(
+    output_dir: Path,
+    images_dir: Path,
+    visual_identity: dict,
+    example_cards: dict[str, dict] | None = None,
+    n_jobs: int = -1,
+) -> list[RenderResult]:
+    """
+    Render every (card_type, template) combination with example cards.
+
+    Captures WeasyPrint logs and returns both output paths and non-harmless warnings.
+    Uses joblib for parallel execution when n_jobs != 1.
+    """
+    from lib.example_cards import build_example_cards
+
+    cards = example_cards if example_cards is not None else build_example_cards()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    images_dir.mkdir(parents=True, exist_ok=True)
+    vi = visual_identity
+
+    tasks: list[tuple] = []
+    for cls in get_all_schema_classes():
+        type_field = cls.model_fields.get("type")
+        card_type = type_field.default if type_field else "unknown"
+        card = cards.get(card_type)
+        if card is None:
+            continue
+        for template_path in get_templates_for_schema(cls):
+            tasks.append(
+                (
+                    card,
+                    card_type,
+                    template_path.name,
+                    template_path.stem,
+                    output_dir,
+                    images_dir,
+                    vi,
+                )
+            )
+
+    if n_jobs == 1:
+        return [_render_one_template(*t) for t in tasks]
+    return list(Parallel(n_jobs=n_jobs)(delayed(_render_one_template)(*t) for t in tasks))
 
 
 # Predefined visual identities for testing and quality control

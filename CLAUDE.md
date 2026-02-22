@@ -135,6 +135,7 @@ Jinja2 + WeasyPrint HTML templates that render cards to PDF. Each schema class d
    - Shared pattern: card bg = `main_color`, top band bg = `dark_color`, border = `accent_color`
 
 6. **Images**:
+   - Both `width` and `height` must be multiples of 64.
    - Call from template: `{% set img = get_image("prompt text", width, height) %}`
    - Returns raw base64 string or None. Render as: `<img src="data:image/png;base64,{{ img }}">`
    - For CSS background: `background-image: url('data:image/png;base64,{{ img }}');`
@@ -158,8 +159,8 @@ Jinja2 + WeasyPrint HTML templates that render cards to PDF. Each schema class d
    - Files starting with `_` (like `_card_base.html.jinja2`) are not picked up by any schema glob
 
 8. **Test without LLM**:
-   - Use `quality_tests/pages/2_Render_Templates.py` with predefined `PREDEFINED_STYLES` (no LLM required)
-   - CLI: `python quality_tests/pages/2_Render_Templates.py`
+   - Use `uv run pytest tests/test_render_templates.py` (no LLM required)
+   - Importantly, this shows any warnings from WeasyPrint. Those should be fixed as they likely correspond to features that are not supported by WeasyPrint.
    - Streamlit: `make quality-tests` → select "Render Templates" page → choose visual identity style
 
 ### Tests (`tests/`)
