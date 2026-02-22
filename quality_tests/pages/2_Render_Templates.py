@@ -19,6 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
+from lib.example_cards import build_example_cards  # noqa: E402
 from lib.registry import get_all_schema_classes  # noqa: E402
 from lib.streamlit_utils import in_streamlit  # noqa: E402
 from tools.pdf_to_pngs import pdf_to_pngs  # noqa: E402
@@ -27,27 +28,15 @@ from tools.render_template import PREDEFINED_STYLES, render_card_to_pdf  # noqa:
 _TEMPLATES_DIR = ROOT / "src" / "templates"
 _IMAGE_CACHE_DIR = ROOT / "data" / "image_cache"
 
-
-# ---------------------------------------------------------------------------
-# Example cards — built from each schema's get_examples() classmethod.
-# ---------------------------------------------------------------------------
-def _build_example_cards() -> dict[str, dict]:
-    result: dict[str, dict] = {}
-    for cls in get_all_schema_classes():
-        type_field = cls.model_fields.get("type")
-        card_type = type_field.default if type_field else None
-        if card_type is None:
-            continue
-        examples = cls.get_examples()
-        if examples:
-            result[card_type] = examples[0].model_dump()
-    return result
-
-
-EXAMPLE_CARDS: dict[str, dict] = _build_example_cards()
+EXAMPLE_CARDS: dict[str, dict] = build_example_cards()
 
 _TAG_VALUES: list[str | None] = [None, "top_end", "middle", "bottom_end"]
-_TAG_LABELS = ["none (standalone)", "top_end — first in group", "middle", "bottom_end — last in group"]
+_TAG_LABELS = [
+    "none (standalone)",
+    "top_end — first in group",
+    "middle",
+    "bottom_end — last in group",
+]
 
 
 def _card_with_tag(card: dict, tag: str | None) -> dict:
@@ -129,7 +118,11 @@ def run_cli() -> None:
     # Tag system — render one card type with all four tag values
     print("\n--- Tag system ---")
     demo_cls = next(
-        (c for c in all_classes if c.model_fields.get("type") and c.model_fields["type"].default in EXAMPLE_CARDS),
+        (
+            c
+            for c in all_classes
+            if c.model_fields.get("type") and c.model_fields["type"].default in EXAMPLE_CARDS
+        ),
         None,
     )
     if demo_cls:

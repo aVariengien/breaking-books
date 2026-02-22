@@ -80,7 +80,7 @@ def _layout_2up(writer: PdfWriter, pdf_paths: list[Path]) -> None:
             if not p:
                 continue
             w, h = _get_page_size(p)
-            scale = min(slot_w / w, slot_h / h, 1.0)
+            scale = min(slot_w / w, slot_h / h)  # scale up to fill A5 slot when card is A6
             eff_w, eff_h = w * scale, h * scale
             x = j * (slot_w + _GAP) + (slot_w - eff_w) / 2
             y = (slot_h - eff_h) / 2
@@ -119,7 +119,20 @@ def _layout_4up(writer: PdfWriter, pdf_paths: list[Path]) -> None:
             y = row * (slot_h + _GAP) + (slot_h - eff_h) / 2
 
             if rotate:
-                t = Transformation().scale(scale, scale).rotate(-90).translate(tx=x, ty=y)
+                # Rotate around page center so content stays in predictable coordinates
+                # (v1 used A5 landscape and didn't need rotation; we follow the
+                # rotate-around-center pattern for portrait A6 cards)
+                slot_left = col * (slot_w + _GAP)
+                slot_bottom = row * (slot_h + _GAP)
+                cx = slot_left + slot_w / 2
+                cy = slot_bottom + slot_h / 2
+                t = (
+                    Transformation()
+                    .translate(tx=-w / 2, ty=-h / 2)
+                    .rotate(90)
+                    .scale(sx=scale, sy=scale)
+                    .translate(tx=cx, ty=cy)
+                )
                 sheet.merge_transformed_page(p, t.ctm)
             else:
                 sheet.merge_transformed_page(p, (scale, 0, 0, scale, x, y))
