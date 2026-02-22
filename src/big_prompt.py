@@ -17,10 +17,12 @@ from lib.registry import get_all_schema_classes
 #   {card_size}       — physical card size
 #   {lang_line}       — language instruction
 #   {prefs_section}   — optional user preferences line
-#   {book_html}       — full book HTML
+#
+# The book HTML is passed separately via build_initial_query() so it
+# does not inflate the system prompt.
 #
 # Note: literal {{ / }} in JSON snippets survive str.format() as { / }.
-# Dynamic content (schema_docs, book_html) is brace-escaped before formatting.
+# Dynamic content (schema_docs) is brace-escaped before formatting.
 # ---------------------------------------------------------------------------
 
 PROMPT = """\
@@ -112,27 +114,27 @@ Here is how chain-thinking works in practice. Consider a section of Rutger Bregm
 
 **Step 1: Identify candidate cards.**
 
-* **The Overton Window** (DefaultCard) — how radical ideas become mainstream.  
-* **The Noble Loser** (DefaultCard) — the figure who is right but achieves nothing.  
-* **Rosa Parks Was Not a Seamstress** (ExampleCard) — the strategic reality behind an iconic moment.  
-* **August Landmesser** (ExampleCard) — the man who didn't salute, and why it didn't matter.  
-* **Five Illusions of the Noble Loser** (Enumeration) — awareness, good intentions, right reasons, purity, synergy.  
-* **Moral Reframing** (Definition) — finding new arguments for the same standpoint.  
-* **Clarkson's Sailors** (ExampleCard) — the abolitionist who reframed slavery as a threat to British sailors.  
-* **Equiano's Bestseller** (ExampleCard) — the autobiography that may have been partly fiction, and why that might be genius.  
-* **The Illusion of Purity** (DefaultCard) — why demanding total agreement kills coalitions.  
-* **Rob Mather and the Remote Control** (ExampleCard) — how a misclick on a TV remote led to 100,000 lives saved.  
-* **Sizeable, Super-Solvable, Sorely Overlooked** (DefaultCard) — the three S's for picking where to aim.  
-* **VORP** (Definition) — Value Over Replacement Player, applied to doing good.  
-* **Charity Entrepreneurship** (ExampleCard) — Joey Savoie's Hogwarts for do-gooders.  
-* **The Malaria Vaccine Gap** (DefaultCard) — the vaccine was within reach in 1980; 40 million died before it was approved.  
+* **The Overton Window** (DefaultCard) — how radical ideas become mainstream.
+* **The Noble Loser** (DefaultCard) — the figure who is right but achieves nothing.
+* **Rosa Parks Was Not a Seamstress** (ExampleCard) — the strategic reality behind an iconic moment.
+* **August Landmesser** (ExampleCard) — the man who didn't salute, and why it didn't matter.
+* **Five Illusions of the Noble Loser** (Enumeration) — awareness, good intentions, right reasons, purity, synergy.
+* **Moral Reframing** (Definition) — finding new arguments for the same standpoint.
+* **Clarkson's Sailors** (ExampleCard) — the abolitionist who reframed slavery as a threat to British sailors.
+* **Equiano's Bestseller** (ExampleCard) — the autobiography that may have been partly fiction, and why that might be genius.
+* **The Illusion of Purity** (DefaultCard) — why demanding total agreement kills coalitions.
+* **Rob Mather and the Remote Control** (ExampleCard) — how a misclick on a TV remote led to 100,000 lives saved.
+* **Sizeable, Super-Solvable, Sorely Overlooked** (DefaultCard) — the three S's for picking where to aim.
+* **VORP** (Definition) — Value Over Replacement Player, applied to doing good.
+* **Charity Entrepreneurship** (ExampleCard) — Joey Savoie's Hogwarts for do-gooders.
+* **The Malaria Vaccine Gap** (DefaultCard) — the vaccine was within reach in 1980; 40 million died before it was approved.
 * Question: *If most people already agree a problem is worth solving, why does so little change?*
 
 **Step 2: Check for connections. Map title references.**
 
-* **The Noble Loser** is referenced in: Rosa Parks card ("the polar opposite of the **Noble Loser**"), Landmesser card ("Landmesser was more of a **Noble Loser**"), the Five Illusions card ("five myths that keep **Noble Losers** from hitting their goals"), and the Question ("what separates a **Noble Loser** from someone like Rosa Parks?"). That makes it a hub.  
-* **Moral Reframing** is referenced in: Clarkson's Sailors ("Clarkson used **moral reframing** to make abolition a patriotic cause"), Equiano's Bestseller ("Equiano mastered the art of **moral reframing**, praising England even as he condemned its slave trade"), and The Illusion of Purity ("**moral reframing** is how you reach people outside your tent").  
-* **VORP** appears in: Charity Entrepreneurship ("the school trains people to maximize their **VORP**"), Rob Mather ("Mather's **VORP** is staggering: without him, those nets don't get distributed"), and The Malaria Vaccine Gap ("Viktor Zhdanov may have the highest **VORP** in the history of healthcare").  
+* **The Noble Loser** is referenced in: Rosa Parks card ("the polar opposite of the **Noble Loser**"), Landmesser card ("Landmesser was more of a **Noble Loser**"), the Five Illusions card ("five myths that keep **Noble Losers** from hitting their goals"), and the Question ("what separates a **Noble Loser** from someone like Rosa Parks?"). That makes it a hub.
+* **Moral Reframing** is referenced in: Clarkson's Sailors ("Clarkson used **moral reframing** to make abolition a patriotic cause"), Equiano's Bestseller ("Equiano mastered the art of **moral reframing**, praising England even as he condemned its slave trade"), and The Illusion of Purity ("**moral reframing** is how you reach people outside your tent").
+* **VORP** appears in: Charity Entrepreneurship ("the school trains people to maximize their **VORP**"), Rob Mather ("Mather's **VORP** is staggering: without him, those nets don't get distributed"), and The Malaria Vaccine Gap ("Viktor Zhdanov may have the highest **VORP** in the history of healthcare").
 * **Sizeable, Super-Solvable, Sorely Overlooked** is referenced in: Rob Mather ("malaria was a textbook **triple-S challenge**"), Charity Entrepreneurship ("the school picks causes using the **three S's**"), and The Malaria Vaccine Gap ("the vaccine was a **super-solvable** problem that nobody was solving").
 
 **Step 3: Check for islands.**
@@ -181,9 +183,9 @@ Color tells a player which section they're holding before they read a word. Make
 
 Apply the same discipline as good frontend design. Commit fully to a vision:
 
-- **Be opinionated.** Timid choices produce forgettable decks. A palette of warm ochres and deep burgundy on a matte cream ground is a choice. A palette of cold electric blue, near-white, and near-black is a different choice. Both are right if they fit the book. A muddy compromise between them is always wrong.  
-- **Match the book's emotional register.** A book about systemic collapse should feel different from a book about quiet human connection. The colors, the fonts, and the image style should add up to a coherent aesthetic argument about what the book *is*.  
-- **Differentiate sections from each other.** Sections tell different parts of the story. Their visual identities should be distinct enough that a player can tell sections apart on the table.  
+- **Be opinionated.** Timid choices produce forgettable decks. A palette of warm ochres and deep burgundy on a matte cream ground is a choice. A palette of cold electric blue, near-white, and near-black is a different choice. Both are right if they fit the book. A muddy compromise between them is always wrong.
+- **Match the book's emotional register.** A book about systemic collapse should feel different from a book about quiet human connection. The colors, the fonts, and the image style should add up to a coherent aesthetic argument about what the book *is*.
+- **Differentiate sections from each other.** Sections tell different parts of the story. Their visual identities should be distinct enough that a player can tell sections apart on the table.
 - **Let color do structural work.** Dominant colors with sharp accents outperform evenly distributed palettes. One strong hue per section, not five mild ones.
 
 #### Google Fonts Typography Index
@@ -192,136 +194,136 @@ Apply the same discipline as good frontend design. Commit fully to a vision:
 
 Body-safe \= works at small sizes for sustained reading. Title \= headline/display use only. Display \= decorative, short text only.
 
-**SANS-SERIF — NEUTRAL WORKHORSES**  
+**SANS-SERIF — NEUTRAL WORKHORSES**
 Safe defaults. Clean, broadly legible, minimal personality.
 
-- **Inter** — Both. The benchmark screen sans. Clinical precision. Best for UI, dashboards, data.  
-- **DM Sans** — Both. Softer Inter. Approachable and modern. Good for products and editorial.  
-- **Work Sans** — Both. Warm grotesque, slight quirk. Good for blogs, marketing, general web.  
-- **Fira Sans** — Both. Humanist, slightly technical. Mozilla DNA. Great for developer tools and editorial.  
-- **Source Sans Pro** — Both. Adobe's utility sans. Reliable at any size. Pairs naturally with Source Serif.  
-- **Roboto** — Both. Android default. Neutral and competent. Ubiquitous — fine for utility, generic for brand.  
-- **Open Sans** — Both. Broad and friendly. Maximum readability for diverse audiences.  
-- **Lato** — Both. Humanist warmth. Rounded feel. Great for consumer-facing, healthcare, education.  
-- **Karla** — Both. Compact, slightly condensed. Efficient. Good when Inter feels too stiff.  
-- **Rubik** — Both. Rounded corners on geometric forms. Friendly-modern. Good for consumer apps.  
-- **Chivo** — Both. Ink-trap grotesque with editorial grit. More personality than Roboto.  
-- **PT Sans** — Both. Russian humanist. Warm and civic. Good for multilingual or public sector.  
-- **Libre Franklin** — Both. American grotesque (News Gothic lineage). Functional and punchy.  
-- **Nunito Sans** — Both. Rounded, warm, approachable. Consumer, education, health.  
+- **Inter** — Both. The benchmark screen sans. Clinical precision. Best for UI, dashboards, data.
+- **DM Sans** — Both. Softer Inter. Approachable and modern. Good for products and editorial.
+- **Work Sans** — Both. Warm grotesque, slight quirk. Good for blogs, marketing, general web.
+- **Fira Sans** — Both. Humanist, slightly technical. Mozilla DNA. Great for developer tools and editorial.
+- **Source Sans 3** — Both. Adobe's utility sans. Reliable at any size. Pairs naturally with Source Serif 4.
+- **Roboto** — Both. Android default. Neutral and competent. Ubiquitous — fine for utility, generic for brand.
+- **Open Sans** — Both. Broad and friendly. Maximum readability for diverse audiences.
+- **Lato** — Both. Humanist warmth. Rounded feel. Great for consumer-facing, healthcare, education.
+- **Karla** — Both. Compact, slightly condensed. Efficient. Good when Inter feels too stiff.
+- **Rubik** — Both. Rounded corners on geometric forms. Friendly-modern. Good for consumer apps.
+- **Chivo** — Both. Ink-trap grotesque with editorial grit. More personality than Roboto.
+- **PT Sans** — Both. Russian humanist. Warm and civic. Good for multilingual or public sector.
+- **Libre Franklin** — Both. American grotesque (News Gothic lineage). Functional and punchy.
+- **Nunito Sans** — Both. Rounded, warm, approachable. Consumer, education, health.
 - **Mulish** — Both. Clean minimalist. Slightly narrower than Lato. Interfaces needing visual economy.
 
-**SANS-SERIF — DISTINCTIVE / EDITORIAL**  
+**SANS-SERIF — DISTINCTIVE / EDITORIAL**
 More personality. Use when the design has a clear visual identity and "neutral" is boring.
 
-- **Space Grotesk** — Both. Technical grotesque with quirky details. Strong for tech, creative, editorial.  
-- **Syne** — Title. Angular and experimental. Art/tech/avant-garde. Not for body.  
-- **IBM Plex Sans** — Both. Authoritative and structured. Fintech, developer docs, data products.  
-- **Manrope** — Both. Modern geometric with subtle refinement. Contemporary and underused.  
-- **Poppins** — Both. Geometric circles. Friendly, very popular in SaaS. Slightly loose at small sizes.  
-- **Montserrat** — Both. Bold geometric with strong heavy weights. Marketing-heavy. Can feel dated.  
-- **Raleway** — Both. Art Deco-inflected. Elegant at display sizes. Fashion, luxury, design brands.  
-- **Epilogue** — Both. Slightly wide, excellent at all sizes. More distinctive than Open Sans. Under-used.  
-- **Jost** — Both. Futura-adjacent. Clean and modern. Minimal branding, product identities.  
-- **Plus Jakarta Sans** — Both. Contemporary geometric. Good SaaS/startup alternative to Poppins.  
-- **Instrument Sans** — Both. Elegant and precise. Premium SaaS, fintech, design tools.  
-- **Bricolage Grotesque** — Both. High-contrast editorial grotesque. Variable. Strong brand identity font.  
-- **Outfit** — Both. Clean rounded geometric. Friendly Poppins alternative with more restraint.  
-- **Urbanist** — Both. Precise and spacious. Tech, fashion, DTC brands.  
-- **Familjen Grotesk** — Both. Swedish grotesque warmth. Underused and distinctive.  
-- **Alegreya Sans** — Both. Humanist with calligraphic roots. Literary warmth in sans form.  
-- **Public Sans** — Both. US government-commissioned. Neutral, trustworthy, civic.  
-- **Barlow** — Both. Rounded grotesque. Condensed sibling excellent for big headers. Sports, fitness.  
-- **Josefin Sans** — Title. Geometric, 1930s-influenced. Elegant at headlines. Thin weights are precious.  
-- **Titillium Web** — Both. Italian design school origin. Technical and clean. Good for UI systems.  
+- **Space Grotesk** — Both. Technical grotesque with quirky details. Strong for tech, creative, editorial.
+- **Syne** — Title. Angular and experimental. Art/tech/avant-garde. Not for body.
+- **IBM Plex Sans** — Both. Authoritative and structured. Fintech, developer docs, data products.
+- **Manrope** — Both. Modern geometric with subtle refinement. Contemporary and underused.
+- **Poppins** — Both. Geometric circles. Friendly, very popular in SaaS. Slightly loose at small sizes.
+- **Montserrat** — Both. Bold geometric with strong heavy weights. Marketing-heavy. Can feel dated.
+- **Raleway** — Both. Art Deco-inflected. Elegant at display sizes. Fashion, luxury, design brands.
+- **Epilogue** — Both. Slightly wide, excellent at all sizes. More distinctive than Open Sans. Under-used.
+- **Jost** — Both. Futura-adjacent. Clean and modern. Minimal branding, product identities.
+- **Plus Jakarta Sans** — Both. Contemporary geometric. Good SaaS/startup alternative to Poppins.
+- **Instrument Sans** — Both. Elegant and precise. Premium SaaS, fintech, design tools.
+- **Bricolage Grotesque** — Both. High-contrast editorial grotesque. Variable. Strong brand identity font.
+- **Outfit** — Both. Clean rounded geometric. Friendly Poppins alternative with more restraint.
+- **Urbanist** — Both. Precise and spacious. Tech, fashion, DTC brands.
+- **Familjen Grotesk** — Both. Swedish grotesque warmth. Underused and distinctive.
+- **Alegreya Sans** — Both. Humanist with calligraphic roots. Literary warmth in sans form.
+- **Public Sans** — Both. US government-commissioned. Neutral, trustworthy, civic.
+- **Barlow** — Both. Rounded grotesque. Condensed sibling excellent for big headers. Sports, fitness.
+- **Josefin Sans** — Title. Geometric, 1930s-influenced. Elegant at headlines. Thin weights are precious.
+- **Titillium Web** — Both. Italian design school origin. Technical and clean. Good for UI systems.
 - **Cabin** — Both. Humanist with slightly condensed rhythm. Warm and functional.
 
-**SANS-SERIF — CONDENSED**  
+**SANS-SERIF — CONDENSED**
 Maximum horizontal efficiency. Headlines, labels, posters, sports.
 
-- **Archivo Narrow** — Both. Best-in-class condensed grotesque. Excellent for tables, labels, dense UI.  
-- **Oswald** — Title. Strong American condensed. News headlines, sports, high-contrast systems.  
-- **Barlow Condensed** — Title. Clean and modern condensed. Better than Oswald for contemporary brands.  
-- **Fjalla One** — Title. High-contrast condensed. Punchy headlines.  
-- **Pathway Gothic One** — Display. Ultra-condensed. Short, emphatic headlines only.  
+- **Archivo Narrow** — Both. Best-in-class condensed grotesque. Excellent for tables, labels, dense UI.
+- **Oswald** — Title. Strong American condensed. News headlines, sports, high-contrast systems.
+- **Barlow Condensed** — Title. Clean and modern condensed. Better than Oswald for contemporary brands.
+- **Fjalla One** — Title. High-contrast condensed. Punchy headlines.
+- **Pathway Gothic One** — Display. Ultra-condensed. Short, emphatic headlines only.
 - **Bebas Neue** — Display. All-caps impact. Posters and hero text. No lowercase.
 
-**SERIF — BODY / LITERARY**  
+**SERIF — BODY / LITERARY**
 For sustained reading, editorial, and contexts where warmth and tradition matter.
 
-- **Lora** — Both. Calligraphic warmth. Literary and beautiful. One of the best free serifs for long-form web.  
-- **Merriweather** — Both. Sturdy, screen-optimized. Large x-height. News, editorial, documentation.  
-- **Libre Baskerville** — Both. Classic Baskerville revival. Authoritative. Academic, legal, professional.  
-- **Alegreya** — Both. Literary humanist. Expressive. Longform reading, book publishing, magazines.  
-- **Spectral** — Both. Screen-optimized editorial elegance. Slightly condensed. Dense content, longform.  
-- **Source Serif Pro** — Both. Cooler than Lora, still warm. Editorial and product writing.  
-- **PT Serif** — Both. Humanist, multilingual-friendly. Good companion to PT Sans.  
-- **Cardo** — Both. Classical and scholarly. Academic, antiquarian, literary.  
-- **Proza Libre** — Both. Quirky bridge between serif and sans. Readable and distinctive.  
-- **Neuton** — Both. Light and graceful. Good where a delicate touch is needed.  
-- **Literata** — Both. Google Books' font. Engineered for sustained screen reading.  
-- **Newsreader** — Both. Newspaper serif quality. Editorial and news products.  
-- **Vollkorn** — Both. Robust old-style. Sturdy and underused. Very reliable.  
-- **Crimson Pro** — Both. Elegant book serif. Long paragraphs, editorial. Better than Crimson Text.  
-- **Eczar** — Both. Versatile across optical sizes. Works at display and body. Slightly Indian-influenced.  
-- **Bitter** — Both. Slab serif designed for screens. Sturdy, readable, slightly mechanical.  
-- **Arvo** — Both. Geometric slab. Clean and modern. Less warm than Bitter but more distinctive.  
+- **Lora** — Both. Calligraphic warmth. Literary and beautiful. One of the best free serifs for long-form web.
+- **Merriweather** — Both. Sturdy, screen-optimized. Large x-height. News, editorial, documentation.
+- **Libre Baskerville** — Both. Classic Baskerville revival. Authoritative. Academic, legal, professional.
+- **Alegreya** — Both. Literary humanist. Expressive. Longform reading, book publishing, magazines.
+- **Spectral** — Both. Screen-optimized editorial elegance. Slightly condensed. Dense content, longform.
+- **Source Serif 4** — Both. Cooler than Lora, still warm. Editorial and product writing.
+- **PT Serif** — Both. Humanist, multilingual-friendly. Good companion to PT Sans.
+- **Cardo** — Both. Classical and scholarly. Academic, antiquarian, literary.
+- **Proza Libre** — Both. Quirky bridge between serif and sans. Readable and distinctive.
+- **Neuton** — Both. Light and graceful. Good where a delicate touch is needed.
+- **Literata** — Both. Google Books' font. Engineered for sustained screen reading.
+- **Newsreader** — Both. Newspaper serif quality. Editorial and news products.
+- **Vollkorn** — Both. Robust old-style. Sturdy and underused. Very reliable.
+- **Crimson Pro** — Both. Elegant book serif. Long paragraphs, editorial. Better than Crimson Text.
+- **Eczar** — Both. Versatile across optical sizes. Works at display and body. Slightly Indian-influenced.
+- **Bitter** — Both. Slab serif designed for screens. Sturdy, readable, slightly mechanical.
+- **Arvo** — Both. Geometric slab. Clean and modern. Less warm than Bitter but more distinctive.
 - **Inknut Antiqua** — Body. Oldstyle serif, rich and formal. Good for literary and cultural contexts.
 
-**SERIF — DISPLAY / HIGH CONTRAST**  
+**SERIF — DISPLAY / HIGH CONTRAST**
 For headlines where drama matters. High stroke contrast — not for small body text.
 
-- **Playfair Display** — Title. High-contrast transitional. The go-to for luxury and editorial headlines.  
-- **Cormorant** — Title. Ultra-refined, extreme contrast. Luxury fashion, fine dining, high culture.  
-- **Fraunces** — Both. Quirky optical sizes, variable. Unexpected and literary. Strong display presence.  
-- **DM Serif Display** — Title. High-contrast, crisp. Pairs cleanly with DM Sans.  
-- **BioRhyme** — Title. Slab with wide proportions. Distinctive editorial headlines.  
-- **Bodoni Moda** — Title. Bodoni revival. Maximum contrast. Fashion, luxury, fine print.  
-- **GFS Didot** — Title. Greek-origin Didot. Classical elegance for cultural/academic branding.  
-- **Abril Fatface** — Display. Ultra-bold fat face. Extremely powerful for hero text.  
-- **Rozha One** — Display. Chunky display serif. Strong and decorative.  
+- **Playfair Display** — Title. High-contrast transitional. The go-to for luxury and editorial headlines.
+- **Cormorant** — Title. Ultra-refined, extreme contrast. Luxury fashion, fine dining, high culture.
+- **Fraunces** — Both. Quirky optical sizes, variable. Unexpected and literary. Strong display presence.
+- **DM Serif Display** — Title. High-contrast, crisp. Pairs cleanly with DM Sans.
+- **BioRhyme** — Title. Slab with wide proportions. Distinctive editorial headlines.
+- **Bodoni Moda** — Title. Bodoni revival. Maximum contrast. Fashion, luxury, fine print.
+- **GFS Didot** — Title. Greek-origin Didot. Classical elegance for cultural/academic branding.
+- **Abril Fatface** — Display. Ultra-bold fat face. Extremely powerful for hero text.
+- **Rozha One** — Display. Chunky display serif. Strong and decorative.
 - **Yeseva One** — Title. Bold and refined. Fashion and editorial.
 
-**MONOSPACE**  
+**MONOSPACE**
 Code, terminals, data, typewriter aesthetics.
 
-- **JetBrains Mono** — Mono. Developer-optimized with excellent ligatures. Gold standard for code editors.  
-- **Fira Code** — Mono. Excellent ligatures. Strong developer community. Technical and clean.  
-- **Space Mono** — Mono. Geometric monospace with personality. Good for code \+ editorial crossover.  
-- **IBM Plex Mono** — Mono. Corporate-precise. Good for fintech dashboards and data display.  
-- **Inconsolata** — Mono. Clean and elegant. Less aggressive than typical mono. Good for light UIs.  
-- **Source Code Pro** — Mono. Adobe's code font. Clean and reliable. Works at many sizes.  
-- **Roboto Mono** — Mono. Neutral monospace. Good for inline code in docs.  
-- **Courier Prime** — Mono. Refined Courier revival. Screenplay, journalism, typewriter feel.  
-- **Azeret Mono** — Mono. More personality than most. Good when mono needs brand character.  
+- **JetBrains Mono** — Mono. Developer-optimized with excellent ligatures. Gold standard for code editors.
+- **Fira Code** — Mono. Excellent ligatures. Strong developer community. Technical and clean.
+- **Space Mono** — Mono. Geometric monospace with personality. Good for code \+ editorial crossover.
+- **IBM Plex Mono** — Mono. Corporate-precise. Good for fintech dashboards and data display.
+- **Inconsolata** — Mono. Clean and elegant. Less aggressive than typical mono. Good for light UIs.
+- **Source Code Pro** — Mono. Adobe's code font. Clean and reliable. Works at many sizes.
+- **Roboto Mono** — Mono. Neutral monospace. Good for inline code in docs.
+- **Courier Prime** — Mono. Refined Courier revival. Screenplay, journalism, typewriter feel.
+- **Azeret Mono** — Mono. More personality than most. Good when mono needs brand character.
 - **DM Mono** — Mono. Matches DM Sans/Serif family. Use when DM is the system font.
 
-**DISPLAY / DECORATIVE**  
+**DISPLAY / DECORATIVE**
 Strong personality. Headlines and short text only. Not for body.
 
-- **Staatliches** — Display. Extreme compressed all-caps. Propaganda poster energy. German design.  
-- **Anton** — Display. Condensed bold impact. Headlines, posters, sports.  
-- **Big Shoulders Display** — Display. Super-wide, bold. Strong editorial and sports identity.  
-- **Syncopate** — Display. Wide geometric all-caps. Futuristic and architectural.  
-- **Audiowide** — Display. Sci-fi/tech aesthetic. Gaming, software, tech brands.  
-- **Orbitron** — Display. Geometric sci-fi. Retro-futurism and gaming.  
-- **Exo 2** — Both. Sci-fi adjacent but still readable in body. Tech and gaming brands.  
-- **Righteous** — Display. Retro-friendly. 70s warmth. Fun consumer brands.  
-- **Fredoka One** — Display. Bubbly and rounded. Children's products, friendly apps.  
-- **Comfortaa** — Both. Very rounded geometric. Casual and friendly. Light consumer use.  
-- **Pacifico** — Display. Hand-lettered feel. Vintage Americana and casual brands.  
-- **Special Elite** — Display. Typewriter roughness. Editorial nostalgia, journalism aesthetics.  
-- **VT323** — Display. Pixel/terminal retro. Games, retro tech interfaces.  
+- **Staatliches** — Display. Extreme compressed all-caps. Propaganda poster energy. German design.
+- **Anton** — Display. Condensed bold impact. Headlines, posters, sports.
+- **Big Shoulders** — Display. Super-wide, bold. Strong editorial and sports identity.
+- **Syncopate** — Display. Wide geometric all-caps. Futuristic and architectural.
+- **Audiowide** — Display. Sci-fi/tech aesthetic. Gaming, software, tech brands.
+- **Orbitron** — Display. Geometric sci-fi. Retro-futurism and gaming.
+- **Exo 2** — Both. Sci-fi adjacent but still readable in body. Tech and gaming brands.
+- **Righteous** — Display. Retro-friendly. 70s warmth. Fun consumer brands.
+- **Fredoka** — Display. Bubbly and rounded. Children's products, friendly apps.
+- **Comfortaa** — Both. Very rounded geometric. Casual and friendly. Light consumer use.
+- **Pacifico** — Display. Hand-lettered feel. Vintage Americana and casual brands.
+- **Special Elite** — Display. Typewriter roughness. Editorial nostalgia, journalism aesthetics.
+- **VT323** — Display. Pixel/terminal retro. Games, retro tech interfaces.
 - **Press Start 2P** — Display. 8-bit pixel type. Video game UIs only.
 
-**SCRIPT / HANDWRITTEN**  
+**SCRIPT / HANDWRITTEN**
 For accents, signatures, and warmth. Never for body copy.
 
-- **Dancing Script** — Display. Casual connected script. Warm and accessible. Bakeries, events, casual brands.  
-- **Sacramento** — Display. Thin calligraphic script. Elegant and minimal. Weddings, luxury.  
-- **Tangerine** — Display. Ultra-thin formal script. Invitations and fine stationery.  
-- **Great Vibes** — Display. Flowing formal script. Polished and romantic.  
-- **Caveat** — Display. Hand-written, slightly informal. Annotations, notes, educational content.  
+- **Dancing Script** — Display. Casual connected script. Warm and accessible. Bakeries, events, casual brands.
+- **Sacramento** — Display. Thin calligraphic script. Elegant and minimal. Weddings, luxury.
+- **Tangerine** — Display. Ultra-thin formal script. Invitations and fine stationery.
+- **Great Vibes** — Display. Flowing formal script. Polished and romantic.
+- **Caveat** — Display. Hand-written, slightly informal. Annotations, notes, educational content.
 - **Satisfy** — Display. Casual formal script. Mid-range elegance.
 
 **RECOMMENDED PAIRINGS (only for inspiration)**
@@ -334,13 +336,13 @@ For accents, signatures, and warmth. Never for body copy.
 | Fraunces | Work Sans | Quirky literary |
 | Syne | Inter | Tech / avant-garde |
 | Space Grotesk | Space Mono | Developer / hacker |
-| Bricolage Grotesque | Source Serif Pro | Strong brand editorial |
+| Bricolage Grotesque | Source Serif 4 | Strong brand editorial |
 | Josefin Sans | Lato | Clean geometric \+ warmth |
 | Montserrat | Libre Baskerville | Bold marketing \+ authority |
 | IBM Plex Sans | IBM Plex Mono | Developer documentation |
 | Raleway | Karla | Elegant and minimal |
 | Oswald | Open Sans | News and media |
-| Abril Fatface | Source Sans Pro | Magazine / bold consumer |
+| Abril Fatface | Source Sans 3 | Magazine / bold consumer |
 | Bodoni Moda | Crimson Pro | Fashion editorial |
 
 ### Phase 3 — Write the cards
@@ -353,11 +355,11 @@ At this point you already started writting the complete `BBGame` object to `card
 
 **Language and Tone:**
 
-* **Use the config language {{CONFIG\_LANGUAGE}} for all card content.** Illustration prompts and diagram prompts are always in English (for generation tools).  
-* **Write descriptions for players who haven't read the book.** Every card must stand on its own. If a concept requires prior knowledge, either define it inline or ensure a Definition card exists.  
-* **Use simpler words when possible.** If a word has a specialized meaning and you're not defining it, replace it with a word that doesn't require a reference.  
-* **Bold the titles of other cards** when you mention them. This is both a visual signal to the player and a structural check for you: if you can't find anything to bold, the card may be an island.  
-* **Write examples like short stories.** Who did what, why it mattered, what happened. Make the reader care in three sentences.  
+* **Use the config language {{CONFIG\_LANGUAGE}} for all card content.** Illustration prompts and diagram prompts are always in English (for generation tools).
+* **Write descriptions for players who haven't read the book.** Every card must stand on its own. If a concept requires prior knowledge, either define it inline or ensure a Definition card exists.
+* **Use simpler words when possible.** If a word has a specialized meaning and you're not defining it, replace it with a word that doesn't require a reference.
+* **Bold the titles of other cards** when you mention them. This is both a visual signal to the player and a structural check for you: if you can't find anything to bold, the card may be an island.
+* **Write examples like short stories.** Who did what, why it mattered, what happened. Make the reader care in three sentences.
 * **Quotes must be verbatim and full sentences** that can be read as standalone — no fragments, no mid-sentence starts.
 
 **Card Modifiers**
@@ -426,8 +428,13 @@ Call `quality_control()`. Read the report carefully. Apply suggested improvement
 - Language: {lang_line}
 - Maximum quality-control calls: {max_qc_calls}{prefs_section}
 - Write the deck to: `{cards_json_path}`
+"""
 
-## The Book
+
+INITIAL_QUERY_TEMPLATE = """\
+Begin. Plan the sections, write the cards to cards.json, then run quality_control().
+
+Here is the full book:
 
 <book>
 {book_html}
@@ -504,8 +511,8 @@ def build_schema_docs() -> str:
 # ---------------------------------------------------------------------------
 
 
-def build_system_prompt(book_html: str, config: Config, work_dir: WorkDir) -> str:
-    """Assemble the complete agent system prompt."""
+def build_system_prompt(config: Config, work_dir: WorkDir) -> str:
+    """Assemble the agent system prompt (without book HTML)."""
     schema_docs = build_schema_docs()
 
     lang_line = (
@@ -529,5 +536,13 @@ def build_system_prompt(book_html: str, config: Config, work_dir: WorkDir) -> st
         max_qc_calls=config.max_qc_calls,
         prefs_section=prefs_section,
         schema_docs=_esc(schema_docs),
-        book_html=_esc(book_html),
     )
+
+
+def build_initial_query(book_html: str) -> str:
+    """Build the initial user query that includes the full book HTML."""
+
+    def _esc(s: str) -> str:
+        return s.replace("{", "{{").replace("}", "}}")
+
+    return INITIAL_QUERY_TEMPLATE.format(book_html=_esc(book_html))
