@@ -20,6 +20,7 @@ class SectionTheme(BaseModel):
 
 class VisualIdentity(BaseModel):
     """Visual identity for the game: fonts, colors, and aesthetic."""
+
     description: str = "Freeform description of the book's visual identity."
     title_font: str = "Arial"
     body_font: str = "Georgia"
@@ -40,6 +41,7 @@ class Config(BaseModel):
     language: str | None = None  # None → detect from book
     max_qc_calls: int = 3
     user_preferences: str = ""
+    model: Literal["haiku", "sonnet", "opus"] = "haiku"
 
 
 class WorkDir(BaseModel):

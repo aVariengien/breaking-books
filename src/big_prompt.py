@@ -273,6 +273,7 @@ For sustained reading, editorial, and contexts where warmth and tradition matter
 **SERIF — DISPLAY / HIGH CONTRAST**
 For headlines where drama matters. High stroke contrast — not for small body text.
 
+- **EB Garamond** — Both. Renaissance humanist. Warm, scholarly, literary. The classic book serif.
 - **Playfair Display** — Title. High-contrast transitional. The go-to for luxury and editorial headlines.
 - **Cormorant** — Title. Ultra-refined, extreme contrast. Luxury fashion, fine dining, high culture.
 - **Fraunces** — Both. Quirky optical sizes, variable. Unexpected and literary. Strong display presence.

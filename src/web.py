@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import streamlit as st
+from streamlit_pdf_viewer import pdf_viewer
 from claude_agent_sdk import (
     AssistantMessage,
     ResultMessage,
@@ -38,7 +39,6 @@ _DEFAULTS: dict[str, Any] = {
     "config": None,
     "work_dir": None,
     "out_dir": None,
-    "output_dir": None,
     "messages": [],
     "agent_done": False,
     "pending_instructions": None,
@@ -136,7 +136,6 @@ def _render_block(block: dict) -> None:
         tool_input = block.get("input", {})
         label = _tool_label(name, tool_input)
         with st.status(label, state="complete"):
-            # Show truncated input for readability
             input_str = json.dumps(tool_input, indent=2, ensure_ascii=False)
             if len(input_str) > 2000:
                 input_str = input_str[:2000] + "\n..."
@@ -146,7 +145,6 @@ def _render_block(block: dict) -> None:
         if block.get("is_error"):
             st.error(content[:1000] if len(content) > 1000 else content)
         elif content.strip():
-            # Show tool results compactly
             display = content[:1000] + "..." if len(content) > 1000 else content
             st.caption(display)
 
@@ -184,6 +182,11 @@ def _stream_agent(
 
     Returns the list of serialized messages produced during this run.
     """
+    st.info(
+        "Agent resuming…"
+        if resume
+        else "Agent running… this may take a few minutes. Do not refresh the page."
+    )
     container = st.container()
     new_messages: list[dict] = []
 
@@ -202,12 +205,42 @@ def _stream_agent(
 
 
 # ------------------------------------------------------------------
+# Versioned deck helpers
+# ------------------------------------------------------------------
+
+
+def _deck_versions(out_dir: OutDir) -> list[Path]:
+    """Return all deck-vNNN.pdf files in out_dir, sorted by version number."""
+    return sorted(
+        out_dir.root.glob("deck-v*.pdf"),
+        key=lambda p: int(p.stem.split("-v")[1]),
+    )
+
+
+def _next_deck_path(out_dir: OutDir) -> Path:
+    """Return the path for the next (not-yet-created) deck version."""
+    existing = _deck_versions(out_dir)
+    next_v = int(existing[-1].stem.split("-v")[1]) + 1 if existing else 0
+    return out_dir.root / f"deck-v{next_v:03d}.pdf"
+
+
+# ------------------------------------------------------------------
 # Results display
 # ------------------------------------------------------------------
 
 
-def _show_results(work_dir: WorkDir, out_dir: OutDir, config: Config, output_dir: Path) -> None:
-    """Load BBGame from cards.json and display the deck + QC reports."""
+def _show_results(
+    work_dir: WorkDir,
+    out_dir: OutDir,
+    config: Config,
+    *,
+    new_version: bool = False,
+) -> None:
+    """Load BBGame from cards.json and display the deck + QC reports.
+
+    new_version=True: re-render card PDFs and save a new deck-vNNN.pdf.
+    new_version=False: use whatever already exists; render only if nothing is there yet.
+    """
     cards_path = work_dir.cards_json
     if not cards_path.exists():
         st.warning("No cards.json found yet.")
@@ -220,46 +253,67 @@ def _show_results(work_dir: WorkDir, out_dir: OutDir, config: Config, output_dir
         return
 
     st.divider()
-    st.subheader(f"Deck — {len(game.cards)} cards")
 
-    # Render PDFs if not already done
+    # Summary metrics
+    card_types: dict[str, int] = {}
+    for card in game.cards:
+        label = str(card.model_dump().get("type", "unknown"))
+        card_types[label] = card_types.get(label, 0) + 1
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Cards", len(game.cards))
+    col2.metric("Sections", len(game.visual_identity.section_themes))
+    col3.metric("Types", len(card_types))
+    if card_types:
+        st.caption("  ".join(f"`{t}` ×{n}" for t, n in sorted(card_types.items())))
+
+    # Render card PDFs when needed
     renders_dir = work_dir.renders_dir
-    pdf_paths = sorted(renders_dir.glob("card-*.pdf"))
-    if not pdf_paths and game.cards:
-        with st.spinner("Rendering cards to PDF..."):
-            pdf_paths = cards_json_to_pdfs(
+    existing_card_pdfs = sorted(renders_dir.glob("card-*.pdf"))
+    if (not existing_card_pdfs or new_version) and game.cards:
+        with st.spinner("Rendering cards to PDF…"):
+            existing_card_pdfs = cards_json_to_pdfs(
                 cards_path, renders_dir, config, out_dir.images_dir, n_jobs=1
             )
 
-    # Card gallery
-    if pdf_paths:
-        cols = st.columns(min(len(pdf_paths), 4))
-        for i, pdf_path in enumerate(pdf_paths):
-            with cols[i % len(cols)]:
-                st.caption(f"Card {i}")
-                # Show PDF as download since Streamlit can't inline PDFs easily
-                st.download_button(
-                    f"card-{i}.pdf",
-                    pdf_path.read_bytes(),
-                    file_name=f"card-{i}.pdf",
-                    mime="application/pdf",
-                    key=f"dl_card_{i}",
-                )
+    # Build a new versioned deck if needed
+    versions = _deck_versions(out_dir)
+    if existing_card_pdfs and (not versions or new_version):
+        deck_path = _next_deck_path(out_dir)
+        with st.spinner(f"Building {deck_path.name}…"):
+            merge_pdfs_to_print(existing_card_pdfs, deck_path)
+        versions = _deck_versions(out_dir)
 
-    # Merge into deck.pdf
-    deck_path = output_dir / "deck.pdf"
-    if pdf_paths and not deck_path.exists():
-        with st.spinner("Merging into printable deck..."):
-            merge_pdfs_to_print(pdf_paths, deck_path)
+    # cards.json download (always available)
+    st.download_button(
+        "⬇ Download cards.json",
+        cards_path.read_bytes(),
+        file_name="cards.json",
+        mime="application/json",
+        key="dl_cards_json",
+    )
 
-    if deck_path.exists():
-        st.download_button(
-            "Download deck.pdf",
-            deck_path.read_bytes(),
-            file_name="deck.pdf",
-            mime="application/pdf",
-            key="dl_deck",
-        )
+    # Version selector + inline viewer
+    if versions:
+        # Newest first; label the latest one
+        options = list(reversed(versions))
+        labels = [f"{p.name} (latest)" if i == 0 else p.name for i, p in enumerate(options)]
+        label_to_path = dict(zip(labels, options))
+
+        selected_label = st.selectbox("Deck version", labels, index=0)
+        selected_path = label_to_path[selected_label]
+
+        dl_col, _ = st.columns([1, 3])
+        with dl_col:
+            st.download_button(
+                f"⬇ Download {selected_path.name}",
+                selected_path.read_bytes(),
+                file_name=selected_path.name,
+                mime="application/pdf",
+                key=f"dl_{selected_path.name}",
+            )
+
+        pdf_viewer(str(selected_path), annotations=[])
 
     # QC reports
     qc_reports = sorted(out_dir.root.glob("qc-report-v*.md"))
@@ -270,23 +324,14 @@ def _show_results(work_dir: WorkDir, out_dir: OutDir, config: Config, output_dir
                 st.markdown(report_path.read_text(encoding="utf-8"))
                 st.divider()
 
-    # cards.json download
-    st.download_button(
-        "Download cards.json",
-        cards_path.read_bytes(),
-        file_name="cards.json",
-        mime="application/json",
-        key="dl_cards_json",
-    )
-
 
 # ------------------------------------------------------------------
 # Sidebar
 # ------------------------------------------------------------------
 
 
-def _sidebar() -> tuple[Any, int, str, str | None, int, str]:
-    """Render sidebar config widgets. Returns (uploaded_file, num_cards, card_size, language, max_qc_calls, user_preferences)."""
+def _sidebar() -> tuple[Any, int, str, str, str | None, int, str]:
+    """Render sidebar config widgets."""
     with st.sidebar:
         st.title("Breaking Books")
         uploaded_file = st.file_uploader(
@@ -294,6 +339,7 @@ def _sidebar() -> tuple[Any, int, str, str | None, int, str]:
         )
         num_cards = st.slider("Number of cards", 5, 80, 15)
         card_size = st.selectbox("Card size", ["A6", "A5"], index=0)
+        model = st.selectbox("Model", ["haiku", "sonnet", "opus"], index=0)
         language = st.text_input("Language (optional)", placeholder="e.g. English, Spanish")
         max_qc_calls = st.slider("Max QC iterations", 1, 5, 3)
         user_preferences = st.text_area(
@@ -303,6 +349,7 @@ def _sidebar() -> tuple[Any, int, str, str | None, int, str]:
         uploaded_file,
         num_cards,
         card_size or "A6",
+        model or "haiku",
         language or None,
         max_qc_calls,
         user_preferences,
@@ -319,7 +366,9 @@ def main() -> None:
     st.set_page_config(page_title="Breaking Books", layout="wide")
     _init_state()
 
-    uploaded_file, num_cards, card_size, language, max_qc_calls, user_preferences = _sidebar()
+    uploaded_file, num_cards, card_size, model, language, max_qc_calls, user_preferences = (
+        _sidebar()
+    )
 
     # --- Handle follow-up instructions from chat_input ---
     pending = st.session_state.get("pending_instructions")
@@ -330,7 +379,8 @@ def main() -> None:
         out_dir: OutDir = st.session_state["out_dir"]
         log.setup(out_dir.log_path)
 
-        # Clear old renders so they get regenerated
+        # Clear stale card renders so they get regenerated from the updated cards.
+        # Versioned deck PDFs in out_dir are kept.
         for old_pdf in work_dir.renders_dir.glob("card-*.pdf"):
             old_pdf.unlink()
 
@@ -338,10 +388,8 @@ def main() -> None:
         for msg in st.session_state["messages"]:
             _render_message(msg)
 
-        # Show the follow-up as a user message
         st.chat_message("user").markdown(pending)
 
-        # Stream the resumed agent
         new_msgs = _stream_agent(
             st.session_state["book_html"],
             config,
@@ -352,10 +400,8 @@ def main() -> None:
         )
         st.session_state["messages"].extend(new_msgs)
 
-        # Show updated results
-        _show_results(work_dir, out_dir, config, st.session_state["output_dir"])
+        _show_results(work_dir, out_dir, config, new_version=True)
 
-        # Chat input for further follow-ups
         if follow_up := st.chat_input("Follow-up instructions..."):
             st.session_state["pending_instructions"] = follow_up
             st.rerun()
@@ -365,15 +411,12 @@ def main() -> None:
     create_clicked = st.sidebar.button("Create", type="primary", disabled=uploaded_file is None)
 
     if create_clicked and uploaded_file is not None:
-        # Save uploaded file to disk
         suffix = Path(uploaded_file.name).suffix
         tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
         tmp_file.write(uploaded_file.read())
         tmp_file.close()
-        uploaded_path = Path(tmp_file.name)
-        st.session_state["uploaded_path"] = uploaded_path
+        st.session_state["uploaded_path"] = Path(tmp_file.name)
 
-        # Create output directory
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         random_suffix = random.randint(1000, 9999)
         slug = slugify(Path(uploaded_file.name).stem) or "output"
@@ -382,6 +425,7 @@ def main() -> None:
         config = Config(
             num_cards=num_cards,
             card_size=card_size,  # type: ignore[arg-type]
+            model=model,  # type: ignore[arg-type]
             language=language,
             max_qc_calls=max_qc_calls,
             user_preferences=user_preferences,
@@ -390,29 +434,23 @@ def main() -> None:
         out_dir = OutDir.create(output_dir / "out")
         log.setup(out_dir.log_path)
 
-        # Store in session state
         st.session_state["config"] = config
         st.session_state["work_dir"] = work_dir
         st.session_state["out_dir"] = out_dir
-        st.session_state["output_dir"] = output_dir
         st.session_state["messages"] = []
         st.session_state["agent_done"] = False
 
-        # Load book
         with st.spinner("Loading book..."):
-            book_html = load_book(uploaded_path)
+            book_html = load_book(st.session_state["uploaded_path"])
             out_dir.book_html_path.write_text(book_html, encoding="utf-8")
             st.session_state["book_html"] = book_html
 
-        # Stream agent
         new_msgs = _stream_agent(book_html, config, work_dir, out_dir)
         st.session_state["messages"] = new_msgs
         st.session_state["agent_done"] = True
 
-        # Show results
-        _show_results(work_dir, out_dir, config, output_dir)
+        _show_results(work_dir, out_dir, config)
 
-        # Chat input for follow-up
         if follow_up := st.chat_input("Follow-up instructions..."):
             st.session_state["pending_instructions"] = follow_up
             st.rerun()
@@ -428,7 +466,6 @@ def main() -> None:
                 st.session_state["work_dir"],
                 st.session_state["out_dir"],
                 st.session_state["config"],
-                st.session_state["output_dir"],
             )
             if follow_up := st.chat_input("Follow-up instructions..."):
                 st.session_state["pending_instructions"] = follow_up

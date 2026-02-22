@@ -73,7 +73,7 @@ def render_card_to_pdf(
     images_dir: Path,
     *,
     card_index: int,
-    visual_identity: dict | VisualIdentity | None = None,
+    visual_identity: dict | VisualIdentity,
 ) -> Path:
     """
     Render a single card dict with the named Jinja2 template to a PDF file.
@@ -104,14 +104,13 @@ def render_card_to_pdf(
         return get_diagram_image_base64(prompt, images_dir, size=(width, height))
 
     # Pass visual_identity as-is (not flattened); card fields override if names collide
-    if visual_identity is not None:
-        vi_obj = (
-            visual_identity
-            if isinstance(visual_identity, VisualIdentity)
-            else VisualIdentity.model_validate(visual_identity)
-        )
-        template_vars["visual_identity"] = vi_obj.model_dump()
-        template_vars["google_fonts_url"] = build_google_fonts_url(vi_obj)
+    vi_obj = (
+        visual_identity
+        if isinstance(visual_identity, VisualIdentity)
+        else VisualIdentity.model_validate(visual_identity)
+    )
+    template_vars["visual_identity"] = vi_obj.model_dump()
+    template_vars["google_fonts_url"] = build_google_fonts_url(vi_obj)
 
     template_vars["get_image"] = get_image
     template_vars["get_diagram_image"] = get_diagram_image

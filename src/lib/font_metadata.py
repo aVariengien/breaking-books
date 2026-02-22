@@ -34,6 +34,7 @@ FONT_SPECS: dict[str, str] = {
     "Crimson Pro": "Crimson+Pro:ital,wght@0,200;1,200;0,300;1,300;0,400;1,400;0,500;1,500;0,600;1,600;0,700;1,700;0,800;1,800;0,900;1,900",
     "DM Mono": "DM+Mono:ital,wght@0,300;1,300;0,400;1,400;0,500;1,500",
     "DM Sans": "DM+Sans:ital,wght@0,100;1,100;0,200;1,200;0,300;1,300;0,400;1,400;0,500;1,500;0,600;1,600;0,700;1,700;0,800;1,800;0,900;1,900",
+    "EB Garamond": "EB+Garamond:ital,wght@0,400;1,400;0,500;1,500;0,600;1,600;0,700;1,700;0,800;1,800",
     "DM Serif Display": "DM+Serif+Display:ital,wght@0,400;1,400",
     "Dancing Script": "Dancing+Script:wght@400;500;600;700",
     "Eczar": "Eczar:wght@400;500;600;700;800",
