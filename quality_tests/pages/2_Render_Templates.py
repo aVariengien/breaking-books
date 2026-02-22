@@ -276,6 +276,7 @@ def run_streamlit() -> None:
                 with col:
                     st.caption(f"`{template}`")
                     with st.spinner("Rendering…"):
+                        style_json = json.dumps(selected_style, sort_keys=True, default=str)
                         result = _cached_render(card_json, template, style_json)
                     if isinstance(result, str):
                         st.warning(result)

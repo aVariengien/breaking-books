@@ -99,9 +99,9 @@ def render_card_to_pdf(
         """Generate or retrieve a Runware cached image as base64. Called from Jinja2 templates."""
         return get_image_base64(prompt, images_dir, size=(height, width))
 
-    def get_diagram_image(prompt: str, width: int = 256, height: int = 256) -> str | None:
+    def get_diagram_image(prompt: str, width: int = 400, height: int = 300) -> str | None:
         """Generate or retrieve a Gemini Flash diagram image as base64. Called from Jinja2 templates."""
-        return get_diagram_image_base64(prompt, images_dir)
+        return get_diagram_image_base64(prompt, images_dir, size=(width, height))
 
     # Pass visual_identity as-is (not flattened); card fields override if names collide
     if visual_identity is not None:

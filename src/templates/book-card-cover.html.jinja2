@@ -43,14 +43,15 @@
 
     /* ── 1. Icon zone ── */
     .icon-zone {
-      flex: 0 0 52mm;
+      flex: 1;
       display: flex;
-      align-items: center;
+      align-items: flex-end;
       justify-content: center;
+      padding-bottom: 5mm;
       border-bottom: 1.5pt solid #111;
     }
     .icon-zone i {
-      font-size: 46pt;
+      font-size: 52pt;
       color: #111;
     }
 
@@ -82,7 +83,7 @@
 
     /* ── 3. Content zone ── */
     .content {
-      flex: 1;
+      flex: 0 0 auto;
       padding: 3mm 4mm 3mm;
       display: flex;
       flex-direction: column;
@@ -98,7 +99,7 @@
       font-size: 7pt;
       color: #111;
       line-height: 1.55;
-      flex: 1;
+      margin-bottom: 0;
       overflow: hidden;
     }
 

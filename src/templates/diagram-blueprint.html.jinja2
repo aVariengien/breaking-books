@@ -29,6 +29,7 @@
 
     .diagram-zone {
       flex: 1;
+      max-height: 100mm;
       overflow: hidden;
       background: #ffffff;
       border: 1pt solid {{ theme.accent_color }};
@@ -38,8 +39,7 @@
     .diagram-zone img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
-      object-position: center;
+      object-fit: contain;
       display: block;
     }
     .diagram-placeholder {
@@ -81,7 +81,7 @@
       <h1 class="title">{{ title }}</h1>
 
       <div class="diagram-zone">
-        {% set img = get_diagram_image(diagram_prompt) %}
+        {% set img = get_diagram_image(diagram_prompt, 560, 280) %}
         {% if img %}
           <img src="data:image/png;base64,{{ img }}" alt="">
         {% else %}

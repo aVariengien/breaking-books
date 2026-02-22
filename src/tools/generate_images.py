@@ -98,51 +98,70 @@ def get_image_base64(
         return None
 
 
-def _generate_diagram_gemini(prompt: str, cache_dir: Path) -> Path:
-    """Generate a diagram image using Gemini Flash, saving it as a PNG in cache_dir."""
+_ASPECT_RATIOS = [
+    ("1:1",  1.000),
+    ("4:3",  1.333),
+    ("3:2",  1.500),
+    ("5:4",  1.250),
+    ("16:9", 1.778),
+    ("21:9", 2.333),
+    ("2:3",  0.667),
+    ("3:4",  0.750),
+    ("4:5",  0.800),
+    ("9:16", 0.563),
+]
+
+
+def _nearest_aspect_ratio(width: int, height: int) -> str:
+    """Return the supported Gemini aspect ratio string closest to the given dimensions."""
+    target = width / height
+    return min(_ASPECT_RATIOS, key=lambda x: abs(x[1] - target))[0]
+
+
+def _generate_diagram_gemini(prompt: str, size: tuple[int, int], cache_dir: Path) -> Path:
+    """Generate a diagram image using Gemini Flash at the requested size, saving as PNG in cache_dir."""
     from google import genai
     from google.genai import types
 
-    # Use a gemini-prefixed cache key so it never collides with Runware cache entries
-    cache_path = _prompt_cache_path(f"gemini:{prompt}", (0, 0), cache_dir)
+    cache_path = _prompt_cache_path(f"gemini:{prompt}", size, cache_dir)
     if cache_path.exists():
         return cache_path
 
+    width, height = size
+    aspect_ratio = _nearest_aspect_ratio(width, height)
+
+    framed_prompt = f"{prompt}"
+
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    framed_prompt = (
-        f"{prompt}\n\n"
-        "Draw the diagram centered and filling the full image frame with minimal whitespace. "
-        "Square composition, landscape orientation."
-    )
     response = client.models.generate_content(
         model=GEMINI_DIAGRAM_MODEL,
         contents=framed_prompt,
         config=types.GenerateContentConfig(
             response_modalities=["TEXT", "IMAGE"],
+            image_config=types.ImageConfig(
+                aspect_ratio=aspect_ratio,
+                image_size="1K",
+            ),
         ),
     )
 
-    image_bytes: bytes | None = None
     for part in response.candidates[0].content.parts:
-        if part.inline_data is not None:
-            image_bytes = part.inline_data.data
-            break
+        img = part.as_image()
+        if img is not None:
+            img.save(str(cache_path))
+            return cache_path
 
-    if image_bytes is None:
-        raise RuntimeError(f"Gemini returned no image for prompt: {prompt!r}")
-
-    cache_path.write_bytes(image_bytes)
-    return cache_path
+    raise RuntimeError(f"Gemini returned no image for prompt: {prompt!r}")
 
 
-def get_diagram_image_base64(prompt: str, images_dir: Path) -> str | None:
+def get_diagram_image_base64(prompt: str, images_dir: Path, size: tuple[int, int] = (400, 300)) -> str | None:
     """
     Generate or retrieve a Gemini Flash diagram image as base64-encoded PNG.
 
     Returns the base64 string, or None if generation fails.
     """
     try:
-        path = _generate_diagram_gemini(prompt, images_dir)
+        path = _generate_diagram_gemini(prompt, size, images_dir)
         return base64.b64encode(path.read_bytes()).decode()
     except Exception as e:
         import traceback
