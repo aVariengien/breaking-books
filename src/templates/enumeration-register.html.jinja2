@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+{#
+  enumeration-register.html.jinja2
+  Top band. Title + one-line description. Then numbered rows:
+  item number in accent_color · label bold · gloss regular.
+  Clean, authoritative — like a well-formatted reference list.
+#}
+{% from '_card_base.html.jinja2' import type_icon_class, tag_class, top_band_html, css_imports, shared_css %}
+{% set theme = visual_identity.section_themes[0] %}
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    {{ css_imports(visual_identity) }}
+    {{ shared_css(visual_identity, theme) }}
+
+    .content {
+      flex: 1;
+      padding: 4mm 5mm;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .title {
+      font-size: 18pt;
+      margin-bottom: 1.5mm;
+      line-height: 1.2;
+    }
+
+    .description {
+      font-size: 6.5pt;
+      opacity: 0.85;
+      line-height: 1.4;
+      margin-bottom: 3mm;
+    }
+
+    .rule {
+      height: 1.5pt;
+      background: {{ theme.accent_color }};
+      margin-bottom: 3mm;
+    }
+
+    .items {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .item {
+      margin-bottom: 3.5mm;
+    }
+
+    .item-header {
+      display: flex;
+      align-items: baseline;
+      gap: 2mm;
+      margin-bottom: 0.5mm;
+    }
+
+    .item-num {
+      font-size: 7pt;
+      font-weight: 700;
+      color: {{ theme.accent_color }};
+      font-family: {% if visual_identity.title_font %}'{{ visual_identity.title_font }}', {% endif %}sans-serif;
+      flex-shrink: 0;
+      min-width: 5mm;
+      text-align: right;
+    }
+
+    .item-label {
+      font-size: 10pt;
+      font-weight: 700;
+      color: #111;
+    }
+
+    .item-gloss {
+      font-size: 9pt;
+      color: #111;
+      line-height: 1.45;
+      padding-left: 7mm;
+    }
+  </style>
+</head>
+<body>
+  <div class="card{{ tag_class(tag) }}">
+    {{ top_band_html(type, section) }}
+
+    <div class="content">
+      <h1 class="title">{{ title }}</h1>
+      <p class="description">{{ description }}</p>
+      <div class="rule"></div>
+
+      <div class="items">
+        {% for item in items %}
+        <div class="item">
+          <div class="item-header">
+            <span class="item-num">{{ '%02d' % loop.index }}</span>
+            <span class="item-label">{{ item.label }}</span>
+          </div>
+          <div class="item-gloss">{{ item.gloss | safe }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

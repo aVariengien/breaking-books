@@ -130,17 +130,32 @@ Jinja2 + WeasyPrint HTML templates that render cards to PDF. Each schema class d
    - The agent chooses Google Fonts that are available; template ensures graceful fallback
 
 5. **Colors**:
-   - Access section theme: `visual_identity.section_themes[0].main_color`, `.accent_color`, `.dark_color`
-   - Always check existence: `{% if visual_identity.section_themes %}{{ visual_identity.section_themes[0].main_color }}{% else %}#fallback{% endif %}`
+   - `visual_identity.section_themes` contains exactly **one** theme (the card's own section). Always use index `[0]`.
+   - `main_color` = section background tint (often light), `dark_color` = dark foreground / band bg, `accent_color` = vivid highlight
+   - Shared pattern: card bg = `main_color`, top band bg = `dark_color`, border = `accent_color`
 
 6. **Images**:
-   - Call from template: `{% set img = get_image("prompt text", 384, 256) %}`
-   - Returns base64 data URI or None; handle gracefully: `{% if img %}<img src="{{ img }}">{% else %}[No image]{% endif %}`
+   - Call from template: `{% set img = get_image("prompt text", width, height) %}`
+   - Returns raw base64 string or None. Render as: `<img src="data:image/png;base64,{{ img }}">`
+   - For CSS background: `background-image: url('data:image/png;base64,{{ img }}');`
 
-7. **Register template**:
+7. **Shared macros** (`_card_base.html.jinja2`):
+   - Import: `{% from '_card_base.html.jinja2' import type_icon_class, tag_class, top_band_html, css_imports, shared_css %}`
+   - `css_imports(visual_identity)` — FA 6 CDN + Google Fonts `@import` statements
+   - `shared_css(visual_identity, theme)` — base CSS: `@page`, border, top band, title, `<b>` underline
+   - `top_band_html(type, section)` — renders the 9mm dark band with section label + type icon
+   - `tag_class(tag)` — returns CSS class string (` tag-top`, ` tag-middle`, ` tag-bottom`, or empty)
+   - Border tag system: `.tag-top` removes bottom border, `.tag-middle` removes top+bottom, `.tag-bottom` removes top
+
+8. **Card design system**:
+   - Top band (9mm, `dark_color` bg) always present, always contains: `§N` section label + FA type icon in `accent_color`
+   - Border: 2pt solid `accent_color` around entire card; tag removes one or two sides to group cards visually
+   - `definition-lexicon` is the exception: left spine instead of top band (rotated icon + section label)
+   - FA icons by type: default=fa-lightbulb, section=fa-bookmark, question=fa-circle-question, long_quote=fa-quote-left, definition=fa-book, enumeration=fa-list-ol, diagram=fa-diagram-project, example=fa-flask, axis=fa-sliders
+
+9. **Register template**:
    - The schema's `templates: ClassVar[str]` uses a glob pattern to match templates automatically
-   - Example: `DefaultCard.templates = "default-*.html.jinja2"` matches any file like `default-classic.html.jinja2`, `default-minimal.html.jinja2`, etc.
-   - The glob pattern is matched against all files in `src/templates/` at render time
+   - Files starting with `_` (like `_card_base.html.jinja2`) are not picked up by any schema glob
 
 8. **Test without LLM**:
    - Use `quality_tests/pages/2_Render_Templates.py` with predefined `PREDEFINED_STYLES` (no LLM required)

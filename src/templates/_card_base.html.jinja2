@@ -1,0 +1,98 @@
+{#
+  _card_base.html.jinja2
+  Shared Jinja2 macros for all card templates.
+
+  Usage: {% from '_card_base.html.jinja2' import type_icon_class, tag_class, top_band_html, css_imports, shared_css %}
+
+  Conventions:
+    - theme  = visual_identity.section_themes[0]  (only one theme is passed per card)
+    - section is 0-based; displayed as 1-based
+    - tag in {None, 'top_end', 'middle', 'bottom_end'}
+    - border color = main_color (section identity); icon in top-right corner, same color
+#}
+
+{%- macro type_icon_class(card_type) -%}
+  {%- if card_type == 'default' -%}fa-lightbulb
+  {%- elif card_type == 'section' -%}fa-bookmark
+  {%- elif card_type == 'question' -%}fa-circle-question
+  {%- elif card_type == 'long_quote' -%}fa-quote-left
+  {%- elif card_type == 'definition' -%}fa-book
+  {%- elif card_type == 'enumeration' -%}fa-list-ol
+  {%- elif card_type == 'diagram' -%}fa-diagram-project
+  {%- elif card_type == 'example' -%}fa-flask
+  {%- elif card_type == 'axis' -%}fa-sliders
+  {%- else -%}fa-circle
+  {%- endif -%}
+{%- endmacro -%}
+
+{%- macro tag_class(tag) -%}
+  {%- if tag == 'top_end' %} tag-top
+  {%- elif tag == 'middle' %} tag-middle
+  {%- elif tag == 'bottom_end' %} tag-bottom
+  {%- endif -%}
+{%- endmacro -%}
+
+{%- macro top_band_html(card_type, section) -%}
+<i class="fa-solid {{ type_icon_class(card_type) }} card-corner-icon"></i>
+{%- endmacro -%}
+
+{%- macro css_imports(visual_identity) -%}
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css');
+{% if visual_identity.title_font -%}
+@import url('https://fonts.googleapis.com/css2?family={{ visual_identity.title_font | replace(" ", "+") }}:wght@400;600;700&display=swap');
+{%- endif %}
+{% if visual_identity.body_font and visual_identity.body_font != visual_identity.title_font -%}
+@import url('https://fonts.googleapis.com/css2?family={{ visual_identity.body_font | replace(" ", "+") }}:ital,wght@0,400;0,600;1,400&display=swap');
+{%- endif %}
+{%- endmacro -%}
+
+{%- macro shared_css(visual_identity, theme) -%}
+@page { size: A6 portrait; margin: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; }
+
+body {
+  background: #ffffff;
+  color: #111;
+  font-family: {% if visual_identity.body_font %}'{{ visual_identity.body_font }}', {% endif %}Georgia, serif;
+  font-size: 8pt;
+  line-height: 1.5;
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+.card {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #ffffff;
+  border: 4pt solid {{ theme.main_color }};
+  position: relative;
+}
+.card.tag-top    { border-bottom: none; }
+.card.tag-middle { border-top: none; border-bottom: none; }
+.card.tag-bottom { border-top: none; }
+
+/* Type icon in top-right corner — sole section identity marker */
+.card-corner-icon {
+  position: absolute;
+  top: 3.5mm;
+  right: 3.5mm;
+  font-size: 11pt;
+  color: {{ theme.main_color }};
+  z-index: 10;
+}
+
+.title {
+  font-family: {% if visual_identity.title_font %}'{{ visual_identity.title_font }}', {% endif %}Georgia, serif;
+  color: #111;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+b, strong {
+  font-weight: 700;
+  border-bottom: 1pt solid {{ theme.accent_color }};
+}
+{%- endmacro -%}

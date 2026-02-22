@@ -22,15 +22,8 @@ class LongQuote(Schema):
     """
 
     type: Literal["long_quote"] = "long_quote"
-<<<<<<< HEAD
     quote: str = Field(description="Verbatim. 60–70 words — meaty enough to feel like a real excerpt.")
     context: str = Field(description="One sentence: where this sits in the book and what it's about.")
-=======
-    quote: str = Field(description="Verbatim. 100 words max.")
-    context: str = Field(
-        description="One sentence: where this sits in the book and what it's about."
-    )
->>>>>>> 92f3ef9f3eb99f2c002c7ab9b9f7fbc8d5cefab2
     texture: str = Field(
         description="Background texture description for the image generation model. Light paper ground with a fine pattern in the section's accent color."
     )

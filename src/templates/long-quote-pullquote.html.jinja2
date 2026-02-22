@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+{#
+  long-quote-pullquote.html.jinja2
+  Texture as a faint background wash.
+  Giant opening " in accent_color. Quote centred in large serif.
+  Context in small caps at the bottom. Color band reversed to bottom.
+#}
+{% from '_card_base.html.jinja2' import type_icon_class, tag_class, top_band_html, css_imports, shared_css %}
+{% set theme = visual_identity.section_themes[0] %}
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    {{ css_imports(visual_identity) }}
+    {{ shared_css(visual_identity, theme) }}
+
+    .card {
+      position: relative;
+      flex-direction: column;
+    }
+
+    /* Texture wash */
+    .bg-texture {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      opacity: 0.14;
+      z-index: 0;
+    }
+
+    /* Corner icon needs higher z-index than the texture layer */
+    .card-corner-icon {
+      z-index: 10;
+    }
+
+    .quote-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 4mm 7mm 3mm 7mm;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Large decorative quotation mark */
+    .big-mark {
+      font-family: {% if visual_identity.title_font %}'{{ visual_identity.title_font }}', {% endif %}Georgia, serif;
+      font-size: 52pt;
+      line-height: 0.7;
+      color: {{ theme.accent_color }};
+      display: block;
+      margin-bottom: 2mm;
+      opacity: 0.85;
+    }
+
+    .quote {
+      font-family: {% if visual_identity.body_font %}'{{ visual_identity.body_font }}', {% endif %}Georgia, serif;
+      font-size: 10pt;
+      font-style: italic;
+      line-height: 1.6;
+      color: #111;
+    }
+
+    .context {
+      font-size: 8pt;
+      color: #111;
+      font-style: normal;
+      line-height: 1.4;
+      margin-top: 3mm;
+      opacity: 0.65;
+      font-family: {% if visual_identity.body_font %}'{{ visual_identity.body_font }}', {% endif %}Georgia, serif;
+    }
+  </style>
+</head>
+<body>
+  <div class="card{{ tag_class(tag) }}">
+
+    {% set tex = get_image(texture, 512, 768) %}
+    {% if tex %}
+      <div class="bg-texture" style="background-image: url('data:image/png;base64,{{ tex }}');"></div>
+    {% endif %}
+
+    {{ top_band_html(type, section) }}
+
+    <div class="quote-body">
+      <span class="big-mark">"</span>
+      <p class="quote">{{ quote }}</p>
+      <p class="context">{{ context }}</p>
+    </div>
+
+  </div>
+</body>
+</html>

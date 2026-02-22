@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 {#
-  default-classic.html.jinja2
-  Image top half · Title + description + quote bottom half.
-  Quiet editorial. Colour band at top identifies section & type.
+  section-card-poster.html.jinja2
+  Top band. Large image zone. Title + description on white.
+  Clean white card — black text, section identity from the band.
 #}
 {% from '_card_base.html.jinja2' import type_icon_class, tag_class, top_band_html, css_imports, shared_css %}
 {% set theme = visual_identity.section_themes[0] %}
@@ -14,53 +14,42 @@
     {{ shared_css(visual_identity, theme) }}
 
     .image-zone {
-      flex: 0 0 52mm;
+      flex: 0 0 62mm;
       overflow: hidden;
-      background: {{ theme.dark_color }};
-      clip-path: polygon(0 0, 100% 0, 100% 82%, 0% 100%);
+      background: {{ theme.main_color }};
     }
     .image-zone img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
     }
     .image-placeholder {
       width: 100%; height: 100%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 6pt; color: rgba(255,255,255,0.4); padding: 4mm; text-align: center;
+      font-size: 6pt; color: rgba(255,255,255,0.5);
+      padding: 5mm; text-align: center;
     }
 
     .content {
       flex: 1;
-      padding: 4mm 5mm 4mm 5mm;
+      padding: 4mm 5mm 5mm;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
 
     .title {
-      font-size: 21pt;
+      font-size: 23pt;
+      color: #111;
+      line-height: 1.1;
       margin-bottom: 3mm;
     }
 
     .description {
-      font-size: 8pt;
-      line-height: 1.5;
+      font-size: 7.5pt;
       color: #111;
+      line-height: 1.55;
+      flex: 1;
       overflow: hidden;
-    }
-
-    .quote-block {
-      margin-top: 2.5mm;
-      border-left: 2pt solid {{ theme.accent_color }};
-      padding-left: 2.5mm;
-    }
-    .quote {
-      font-size: 8pt;
-      font-style: italic;
-      color: #1a1a1a;
-      line-height: 1.5;
     }
   </style>
 </head>
@@ -69,7 +58,7 @@
     {{ top_band_html(type, section) }}
 
     <div class="image-zone">
-      {% set img = get_image(illustration, 640, 384) %}
+      {% set img = get_image(illustration, 512, 512) %}
       {% if img %}
         <img src="data:image/png;base64,{{ img }}" alt="">
       {% else %}
@@ -79,10 +68,7 @@
 
     <div class="content">
       <h1 class="title">{{ title }}</h1>
-      <div class="description">{{ description | safe }}</div>
-      <div class="quote-block">
-        <p class="quote">{{ quote }}</p>
-      </div>
+      <p class="description">{{ description }}</p>
     </div>
   </div>
 </body>

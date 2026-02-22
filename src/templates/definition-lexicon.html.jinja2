@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+{#
+  definition-lexicon.html.jinja2
+  Dictionary aesthetic. The word is large and italic in a fixed serif
+  (EB Garamond) regardless of the deck's font choice — marking this card
+  as reference material. Color band moves to the LEFT edge (vertical spine),
+  making definition cards visually distinct in any spread.
+#}
+{% from '_card_base.html.jinja2' import type_icon_class, tag_class, css_imports, shared_css %}
+{% set theme = visual_identity.section_themes[0] %}
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    {{ css_imports(visual_identity) }}
+    /* Always import EB Garamond for the word — the dictionary voice */
+    @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;1,400;1,600&display=swap');
+
+    {{ shared_css(visual_identity, theme) }}
+
+    /* Override: left-spine layout instead of top band */
+    .card {
+      flex-direction: row;
+    }
+
+    /* LEFT spine — type icon only; spine color is the section identity */
+    .left-spine {
+      flex: 0 0 9mm;
+      background: {{ theme.main_color }};
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .spine-icon {
+      font-size: 13pt;
+      color: rgba(255,255,255,0.9);
+    }
+
+    /* Main content */
+    .main {
+      flex: 1;
+      padding: 5mm 5mm 5mm 4mm;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .word {
+      font-family: 'EB Garamond', Georgia, serif;
+      font-size: 34pt;
+      font-style: italic;
+      font-weight: 400;
+      color: #111;
+      line-height: 1.0;
+      margin-bottom: 1.5mm;
+    }
+
+    .pos {
+      font-size: 7pt;
+      font-variant: small-caps;
+      letter-spacing: 0.5px;
+      color: #111;
+      opacity: 0.55;
+      margin-bottom: 2.5mm;
+      font-family: {% if visual_identity.body_font %}'{{ visual_identity.body_font }}', {% endif %}Georgia, serif;
+    }
+
+    .rule {
+      height: 1pt;
+      background: {{ theme.accent_color }};
+      margin-bottom: 3mm;
+      opacity: 0.6;
+    }
+
+    .definition {
+      font-size: 8pt;
+      line-height: 1.55;
+      overflow: hidden;
+      margin-bottom: 2mm;
+    }
+
+    .etymology {
+      font-size: 6.5pt;
+      color: #111;
+      opacity: 0.55;
+      line-height: 1.4;
+      font-style: italic;
+      margin-bottom: 3mm;
+      font-family: {% if visual_identity.body_font %}'{{ visual_identity.body_font }}', {% endif %}Georgia, serif;
+    }
+
+    .example-label {
+      font-size: 6pt;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: {{ theme.accent_color }};
+      margin-bottom: 1mm;
+      font-family: {% if visual_identity.title_font %}'{{ visual_identity.title_font }}', {% endif %}sans-serif;
+    }
+    .usage {
+      font-size: 7pt;
+      font-style: italic;
+      color: #111;
+      line-height: 1.5;
+      border-left: 2pt solid {{ theme.accent_color }};
+      padding-left: 2.5mm;
+    }
+  </style>
+</head>
+<body>
+  <div class="card{{ tag_class(tag) }}">
+
+    <div class="left-spine">
+      <i class="fa-solid fa-book spine-icon"></i>
+    </div>
+
+    <div class="main">
+      <div class="word">{{ word }}</div>
+      <div class="pos">{{ part_of_speech }}</div>
+      <div class="rule"></div>
+      <div class="definition">{{ definition | safe }}</div>
+      <div class="etymology">{{ etymology }}</div>
+      <div class="example-label">Example usage</div>
+      <p class="usage">{{ usage_example | safe }}</p>
+    </div>
+
+  </div>
+</body>
+</html>

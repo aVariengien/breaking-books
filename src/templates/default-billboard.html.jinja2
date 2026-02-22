@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 {#
-  default-classic.html.jinja2
-  Image top half · Title + description + quote bottom half.
-  Quiet editorial. Colour band at top identifies section & type.
+  default-billboard.html.jinja2
+  Full-bleed image (top 55%) with a dark gradient.
+  Title sits large below on a clean white ground. Quote at the bottom.
+  Cinematic, punchy.
 #}
 {% from '_card_base.html.jinja2' import type_icon_class, tag_class, top_band_html, css_imports, shared_css %}
 {% set theme = visual_identity.section_themes[0] %}
@@ -14,40 +15,39 @@
     {{ shared_css(visual_identity, theme) }}
 
     .image-zone {
-      flex: 0 0 52mm;
+      flex: 0 0 62mm;
+      position: relative;
       overflow: hidden;
       background: {{ theme.dark_color }};
-      clip-path: polygon(0 0, 100% 0, 100% 82%, 0% 100%);
     }
     .image-zone img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
     }
     .image-placeholder {
       width: 100%; height: 100%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 6pt; color: rgba(255,255,255,0.4); padding: 4mm; text-align: center;
+      display: flex; align-items: flex-end;
+      font-size: 6pt; color: rgba(255,255,255,0.4);
+      padding: 4mm; text-align: center;
     }
 
     .content {
       flex: 1;
-      padding: 4mm 5mm 4mm 5mm;
+      padding: 3mm 5mm 4mm 5mm;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
 
     .title {
-      font-size: 21pt;
+      font-size: 22pt;
       margin-bottom: 3mm;
+      line-height: 1.1;
     }
 
     .description {
-      font-size: 8pt;
+      font-size: 7.5pt;
       line-height: 1.5;
-      color: #111;
       overflow: hidden;
     }
 
@@ -57,7 +57,7 @@
       padding-left: 2.5mm;
     }
     .quote {
-      font-size: 8pt;
+      font-size: 7.5pt;
       font-style: italic;
       color: #1a1a1a;
       line-height: 1.5;
@@ -69,7 +69,7 @@
     {{ top_band_html(type, section) }}
 
     <div class="image-zone">
-      {% set img = get_image(illustration, 640, 384) %}
+      {% set img = get_image(illustration, 640, 448) %}
       {% if img %}
         <img src="data:image/png;base64,{{ img }}" alt="">
       {% else %}

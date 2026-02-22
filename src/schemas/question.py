@@ -42,11 +42,7 @@ class Question(Schema):
         return [
             cls(
                 section=0,
-<<<<<<< HEAD
                 question="Why is a map an instrument of power?",
-=======
-                question=("Why is a map an instrument of power?"),
->>>>>>> 92f3ef9f3eb99f2c002c7ab9b9f7fbc8d5cefab2
                 texture=(
                     "Fine topographic lines on off-white paper, drawn in the [[section's accent color]] at low opacity, thin line weight, no fill."
                 ),

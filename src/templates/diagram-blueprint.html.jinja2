@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+{#
+  diagram-blueprint.html.jinja2
+  Top band. Title. Large central diagram image.
+  Caption below in small italic. Clean and functional.
+#}
+{% from '_card_base.html.jinja2' import type_icon_class, tag_class, top_band_html, css_imports, shared_css %}
+{% set theme = visual_identity.section_themes[0] %}
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    {{ css_imports(visual_identity) }}
+    {{ shared_css(visual_identity, theme) }}
+
+    .content {
+      flex: 1;
+      padding: 4mm 5mm 3mm;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .title {
+      font-size: 17pt;
+      margin-bottom: 3mm;
+      line-height: 1.2;
+    }
+
+    .diagram-zone {
+      flex: 0 0 52mm;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      border: 1pt solid {{ theme.accent_color }};
+      border-radius: 0.5mm;
+      padding: 2mm;
+      margin-bottom: 3mm;
+    }
+    .diagram-zone img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .diagram-placeholder {
+      font-size: 6pt;
+      color: #111;
+      opacity: 0.4;
+      text-align: center;
+      padding: 3mm;
+      font-style: italic;
+    }
+
+    .quote-section {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.5mm;
+    }
+    .quote-mark {
+      font-family: {% if visual_identity.title_font %}'{{ visual_identity.title_font }}', {% endif %}Georgia, serif;
+      font-size: 22pt;
+      line-height: 0.75;
+      color: {{ theme.accent_color }};
+      font-style: normal;
+      flex-shrink: 0;
+    }
+    .caption {
+      font-size: 8pt;
+      font-style: italic;
+      line-height: 1.5;
+      color: #111;
+      opacity: 0.75;
+    }
+  </style>
+</head>
+<body>
+  <div class="card{{ tag_class(tag) }}">
+    {{ top_band_html(type, section) }}
+
+    <div class="content">
+      <h1 class="title">{{ title }}</h1>
+
+      <div class="diagram-zone">
+        {% set img = get_image(diagram_prompt, 512, 448) %}
+        {% if img %}
+          <img src="data:image/png;base64,{{ img }}" alt="">
+        {% else %}
+          <div class="diagram-placeholder">{{ diagram_prompt }}</div>
+        {% endif %}
+      </div>
+
+      <div class="quote-section">
+        <span class="quote-mark">"</span>
+        <p class="caption">{{ caption }}</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
