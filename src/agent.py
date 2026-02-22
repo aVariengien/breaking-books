@@ -12,7 +12,7 @@ from claude_agent_sdk import (
 )
 from claude_agent_sdk import McpSdkServerConfig
 
-from big_prompt import build_system_prompt
+from big_prompt import build_initial_query, build_system_prompt
 from lib.models import Config, OutDir, WorkDir
 
 
@@ -35,12 +35,10 @@ async def run_agent(
     elif resume:
         prompt = "Continue improving the flashcard deck based on the last QC report."
     else:
-        prompt = (
-            "Begin. Plan the sections, write the cards to cards.json, then run quality_control()."
-        )
+        prompt = build_initial_query(book_html)
 
     options = ClaudeAgentOptions(
-        system_prompt=build_system_prompt(book_html, config, work_dir),
+        system_prompt=build_system_prompt(config, work_dir),
         mcp_servers={"bb": _make_agent_tools(work_dir, config, out_dir)},
         allowed_tools=["Read", "Write", "Edit", "Glob", "mcp__bb__quality_control"],
         permission_mode="acceptEdits",
