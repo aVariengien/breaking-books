@@ -188,6 +188,8 @@ def main() -> None:
 
     if failed:
         print(f"\nWarning: {len(failed)} fonts failed. Check names against Google Fonts.")
+        for name in sorted(failed):
+            print(f"  - {name}")
 
 
 if __name__ == "__main__":
