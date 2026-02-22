@@ -13,3 +13,6 @@ test:
 	uv run --frozen ty check src/
 	uv run --frozen ruff check src/
 	uv run --frozen pytest tests/
+
+font-metadata:
+	uv run --frozen python scripts/generate_font_metadata.py
