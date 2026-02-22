@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<!--
+  default-monolith.html.jinja2
+
+  Cinematic full-bleed card. The illustration covers the entire surface.
+  A dark gradient rises from the bottom, anchored by a solid main_color
+  band that holds the quote. Title and description float on the gradient
+  in high-contrast white. Accent color marks key terms and section badge.
+
+  Aesthetic: gallery exhibition poster. Immersive, confident, atmospheric.
+
+  Template variables (all optional except title/description/illustration/quote/section):
+    title, description, illustration, quote, section, tag
+    main_color, accent_color, dark_color, title_font, body_font
+    card_size ('A6' default | 'A5'), language, get_image()
+-->
+{% if card_size == 'A5' %}
+  {% set title_size = '32pt' %}
+  {% set body_size = '11pt' %}
+  {% set quote_size = '9.5pt' %}
+  {% set label_size = '7pt' %}
+  {% set quote_band = '32mm' %}
+  {% set overlay_height = '72%' %}
+  {% set pad = '8mm' %}
+{% else %}
+  {% set title_size = '21pt' %}
+  {% set body_size = '8pt' %}
+  {% set quote_size = '7pt' %}
+  {% set label_size = '5.5pt' %}
+  {% set quote_band = '22mm' %}
+  {% set overlay_height = '68%' %}
+  {% set pad = '5mm' %}
+{% endif %}
+
+<html lang="{{ language | default('en') }}">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title }}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap');
+
+    @page {
+      size: {{ card_size | default('A6') }} portrait;
+      margin: 0;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; }
+
+    .card {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      background: #111111;
+      font-family: {% if body_font %}'{{ body_font }}', {% endif %}'Crimson Pro', serif;
+    }
+
+    /* Full-bleed illustration */
+    .bg-image {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Dark gradient rising from bottom — always readable regardless of image */
+    .gradient-overlay {
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 100%;
+      height: {{ overlay_height }};
+      background: linear-gradient(
+        to top,
+        rgba(0, 0, 0, 0.96) 0%,
+        rgba(0, 0, 0, 0.88) 18%,
+        rgba(0, 0, 0, 0.60) 50%,
+        transparent 100%
+      );
+    }
+
+    /* Solid accent line separating quote band from gradient */
+    .accent-line {
+      position: absolute;
+      bottom: {{ quote_band }};
+      left: 0;
+      width: 100%;
+      height: 1.5pt;
+      background: {% if accent_color %}{{ accent_color }}{% else %}#e8b84b{% endif %};
+    }
+
+    /* Solid main_color band for quote */
+    .quote-band {
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 100%;
+      height: {{ quote_band }};
+      background: {% if main_color %}{{ main_color }}{% else %}#1a3550{% endif %};
+    }
+
+    /* All text content — stacked above overlays */
+    .content {
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 100%;
+      padding: {{ pad }};
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .section-label {
+      font-family: {% if body_font %}'{{ body_font }}', {% endif %}'Crimson Pro', serif;
+      font-size: {{ label_size }};
+      font-weight: 600;
+      color: {% if accent_color %}{{ accent_color }}{% else %}#e8b84b{% endif %};
+      letter-spacing: 2pt;
+      text-transform: uppercase;
+      margin-bottom: 2.5mm;
+    }
+
+    .title {
+      font-family: {% if title_font %}'{{ title_font }}', {% endif %}'Bebas Neue', sans-serif;
+      font-size: {{ title_size }};
+      line-height: 1.0;
+      color: #ffffff;
+      letter-spacing: 1pt;
+      text-transform: uppercase;
+      margin-bottom: 3mm;
+    }
+
+    /* Description sits above the quote band — use margin-bottom to clear it */
+    .description {
+      font-size: {{ body_size }};
+      line-height: 1.55;
+      color: rgba(255, 255, 255, 0.87);
+      margin-bottom: {{ quote_band }};
+    }
+
+    .description b {
+      font-weight: 600;
+      color: {% if accent_color %}{{ accent_color }}{% else %}#e8b84b{% endif %};
+    }
+
+    /* Quote lives inside the quote band */
+    .quote-container {
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 100%;
+      height: {{ quote_band }};
+      padding: 0 {{ pad }};
+      display: flex;
+      align-items: center;
+    }
+
+    .quote {
+      font-family: {% if body_font %}'{{ body_font }}', {% endif %}'Crimson Pro', serif;
+      font-size: {{ quote_size }};
+      font-style: italic;
+      color: rgba(255, 255, 255, 0.80);
+      line-height: 1.45;
+    }
+
+    .quote::before {
+      content: '\201C';
+      font-style: normal;
+      color: rgba(255, 255, 255, 0.40);
+      margin-right: 0.5mm;
+    }
+
+    .quote::after {
+      content: '\201D';
+      font-style: normal;
+      color: rgba(255, 255, 255, 0.40);
+      margin-left: 0.5mm;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+
+    {% set image_base64 = get_image(illustration, 384, 576) %}
+    {% if image_base64 %}
+      <img class="bg-image" src="data:image/png;base64,{{ image_base64 }}" alt="">
+    {% endif %}
+
+    <div class="gradient-overlay"></div>
+    <div class="accent-line"></div>
+    <div class="quote-band"></div>
+
+    <div class="content">
+      <div class="section-label">§ {{ "%02d" | format(section + 1) }}</div>
+      <h1 class="title">{{ title }}</h1>
+      <div class="description">{{ description | safe }}</div>
+    </div>
+
+    <div class="quote-container">
+      <p class="quote">{{ quote }}</p>
+    </div>
+
+  </div>
+</body>
+</html>

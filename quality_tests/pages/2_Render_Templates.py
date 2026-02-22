@@ -1,14 +1,13 @@
 """Quality test: render_template — card schema + Jinja2 template → PDF → PNG.
 
 Renders one card per schema type × template using hardcoded example data.
-If quality_tests/fixtures/sample_image.png exists, it is used as the card
 image; otherwise cards render with a text placeholder.
 
 CLI:      python quality_tests/pages/2_Render_Templates.py
 Streamlit: make quality-tests → "Render Templates" page
 """
 
-import base64
+import json
 import sys
 import tempfile
 from pathlib import Path
@@ -21,29 +20,41 @@ from lib.streamlit_utils import in_streamlit  # noqa: E402
 from tools.pdf_to_pngs import pdf_to_pngs  # noqa: E402
 from tools.render_template import render_card_to_pdf  # noqa: E402
 
-FIXTURES_DIR = ROOT / "quality_tests" / "fixtures"
-SAMPLE_IMAGE = FIXTURES_DIR / "sample_image.png"
+_TEMPLATES_DIR = ROOT / "src" / "templates"
+_IMAGE_CACHE_DIR = ROOT / "data" / "image_cache"
+
 
 # ---------------------------------------------------------------------------
-# Hardcoded example cards — add one entry per schema type.
+# Example cards — built from each schema's get_examples() classmethod.
 # ---------------------------------------------------------------------------
-EXAMPLE_CARDS: dict[str, dict] = {
-    "concept": {
-        "type": "concept",
-        "section": 0,
-        "title": "The Ratchet Effect",
-        "book_quotes": [
-            "Once a cultural or technological innovation is adopted, it tends to persist "
-            "and accumulate rather than slip back.",
-            "Humans, unlike other animals, routinely build on the achievements of "
-            "prior generations without having to reinvent them.",
-        ],
-        "image_description": (
-            "A stone staircase carved into a cliff face, winding upward into the mist, "
-            "each step worn smooth by centuries of use. Soft natural light from above."
-        ),
-    },
-}
+def _build_example_cards() -> dict[str, dict]:
+    result: dict[str, dict] = {}
+    for cls in get_all_schema_classes():
+        type_field = cls.model_fields.get("type")
+        card_type = type_field.default if type_field else None
+        if card_type is None:
+            continue
+        examples = cls.get_examples()
+        if examples:
+            result[card_type] = examples[0].model_dump()
+    return result
+
+
+EXAMPLE_CARDS: dict[str, dict] = _build_example_cards()
+
+
+def _all_templates_for_type(card_type: str, declared: list[str]) -> list[str]:
+    """Declared templates + any on disk not yet listed, matched by type prefix."""
+    prefix = card_type.replace("_", "-")
+    on_disk = {
+        p.name
+        for p in _TEMPLATES_DIR.glob("*.html.jinja2")
+        if p.name == f"{prefix}.html.jinja2" or p.name.startswith(f"{prefix}-")
+    }
+    result = list(declared)
+    for t in sorted(on_disk - set(declared)):
+        result.append(t)
+    return result
 
 
 def _render_to_png_bytes(
@@ -54,13 +65,11 @@ def _render_to_png_bytes(
 ) -> bytes:
     """Render a card dict to PNG bytes (single-page card assumed)."""
     card_data = {**card, "card_size": card_size, "language": "en"}
-    if SAMPLE_IMAGE.exists():
-        card_data["image_base64"] = base64.b64encode(SAMPLE_IMAGE.read_bytes()).decode()
 
+    _IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
-        images_dir = tmp_dir / "images"
-        pdf = render_card_to_pdf(card_data, template_name, tmp_dir, images_dir, card_index=0)
+        pdf = render_card_to_pdf(card_data, template_name, tmp_dir, _IMAGE_CACHE_DIR, card_index=0)
         pngs = pdf_to_pngs(pdf, tmp_dir / "pngs", dpi=dpi)
         return pngs[0].read_bytes()
 
@@ -73,25 +82,22 @@ def run_cli() -> None:
         if card is None:
             print(f"[SKIP] {card_type}: no example card defined in EXAMPLE_CARDS")
             continue
-        for template in cls.templates:
-            data = _render_to_png_bytes(card, template, card_size="A6")
-            print(f"[OK]   {card_type} / {template}: {len(data):,} bytes")
+        for template in _all_templates_for_type(card_type, cls.templates):
+            try:
+                data = _render_to_png_bytes(card, template, card_size="A6")
+                print(f"[OK]   {card_type} / {template}: {len(data):,} bytes")
+            except Exception as e:
+                print(f"[WARN] {card_type} / {template}: {e}")
 
 
 def run_streamlit() -> None:
     import streamlit as st
 
+    st.set_page_config(layout="wide")
     st.title("Render Templates")
     st.caption("Card dict + Jinja2 template → PDF → PNG")
 
     card_size = st.radio("Card size", ["A6", "A5"], horizontal=True)
-
-    if not SAMPLE_IMAGE.exists():
-        st.info(
-            f"No sample image at `{SAMPLE_IMAGE.relative_to(ROOT)}`. "
-            "Cards render with a text placeholder instead of a photo. "
-            "Drop any PNG there to test image rendering."
-        )
 
     for cls in get_all_schema_classes():
         type_field = cls.model_fields.get("type")
@@ -107,13 +113,29 @@ def run_streamlit() -> None:
             )
             continue
 
-        cols = st.columns(len(cls.templates))
-        for col, template in zip(cols, cls.templates):
-            with col:
-                st.caption(f"`{template}`")
-                with st.spinner("Rendering…"):
-                    png_bytes = _render_to_png_bytes(card, template, card_size=card_size)
-                st.image(png_bytes)
+        templates = _all_templates_for_type(card_type, cls.templates)
+
+        @st.cache_data(show_spinner=False)
+        def _cached_render(card_json: str, template_name: str, card_size: str) -> bytes | str:
+            try:
+                return _render_to_png_bytes(json.loads(card_json), template_name, card_size)
+            except Exception as e:
+                return f"{type(e).__name__}: {e}"
+
+        card_json = json.dumps(card, sort_keys=True, default=str)
+        COLS_PER_ROW = 3
+        for i in range(0, len(templates), COLS_PER_ROW):
+            chunk = templates[i : i + COLS_PER_ROW]
+            cols = st.columns(COLS_PER_ROW)
+            for col, template in zip(cols, chunk):
+                with col:
+                    st.caption(f"`{template}`")
+                    with st.spinner("Rendering…"):
+                        result = _cached_render(card_json, template, card_size)
+                    if isinstance(result, bytes):
+                        st.image(result)
+                    else:
+                        st.warning(result)
 
 
 if in_streamlit():

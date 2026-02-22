@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<!--
+  default-split.html.jinja2
+
+  Contemporary split aesthetic: image and text in geometric dialogue,
+  accent color as a bold vertical accent bar. Modern and energetic.
+
+  Variables: title, description, illustration, quote, section,
+             visual_identity (title_font, body_font, accent_color, main_color, dark_color),
+             card_size, language, get_image()
+-->
+{% if card_size == 'A5' %}
+  {% set title_size = '26pt' %}
+  {% set body_size = '10pt' %}
+  {% set quote_size = '9pt' %}
+  {% set image_width = '42%' %}
+  {% set accent_width = '3mm' %}
+{% else %}
+  {% set title_size = '16pt' %}
+  {% set body_size = '7.5pt' %}
+  {% set quote_size = '6.5pt' %}
+  {% set image_width = '40%' %}
+  {% set accent_width = '2mm' %}
+{% endif %}
+
+<html lang="{{ language | default('en') }}">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title }}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@600;700&family=Inter:wght@400;500;600&display=swap');
+
+    @page {
+      size: {{ card_size | default('A6') }} portrait;
+      margin: 0;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+    }
+
+    body {
+      background: #ffffff;
+      color: #1a1a1a;
+      font-family: {% if body_font %}'{{ body_font }}', {% endif %}'Inter', sans-serif;
+      font-size: {{ body_size }};
+      line-height: 1.55;
+    }
+
+    .card {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: {{ accent_width }} {{ image_width }} 1fr;
+      gap: 0;
+    }
+
+    /* Bold accent bar */
+    .accent-bar {
+      background: {% if accent_color %}{{ accent_color }}{% else %}#FF6B6B{% endif %};
+      width: 100%;
+    }
+
+    /* Image column */
+    .image-col {
+      overflow: hidden;
+      background: #f0f0f0;
+      position: relative;
+    }
+
+    .image-col img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .image-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #aaa;
+      font-size: {{ quote_size }};
+      padding: 2mm;
+      text-align: center;
+      font-size: 8pt;
+    }
+
+    /* Content column */
+    .content-col {
+      padding: 5mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: #ffffff;
+    }
+
+    .title {
+      font-family: {% if title_font %}'{{ title_font }}', {% endif %}'Urbanist', sans-serif;
+      font-size: {{ title_size }};
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 3mm;
+      color: #1a1a1a;
+      letter-spacing: -0.5px;
+    }
+
+    .description {
+      font-size: {{ body_size }};
+      line-height: 1.5;
+      color: #2a2a2a;
+      margin-bottom: 3mm;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .description b {
+      font-weight: 600;
+      color: #1a1a1a;
+      {% if accent_color %}background-color: {{ accent_color }}{% endif %};
+      {% if accent_color %}color: #ffffff;{% endif %}
+      padding: 0.5pt 1.5pt;
+      border-radius: 1pt;
+      display: inline;
+    }
+
+    .quote-box {
+      margin-top: auto;
+      padding-top: 3mm;
+      border-top: 1px solid #e5e5e5;
+    }
+
+    .quote {
+      font-size: {{ quote_size }};
+      line-height: 1.4;
+      color: #666;
+      font-style: italic;
+      position: relative;
+      padding-left: 3mm;
+    }
+
+    .quote::before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: {% if accent_color %}{{ accent_color }}{% else %}#FF6B6B{% endif %};
+      font-size: {{ body_size }};
+      font-style: normal;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="accent-bar"></div>
+
+    <div class="image-col">
+      {% set image_base64 = get_image(illustration, 320, 512) %}
+      {% if image_base64 %}
+        <img src="data:image/png;base64,{{ image_base64 }}" alt="{{ illustration }}">
+      {% else %}
+        <div class="image-placeholder">{{ illustration }}</div>
+      {% endif %}
+    </div>
+
+    <div class="content-col">
+      <div>
+        <h1 class="title">{{ title }}</h1>
+        <div class="description">{{ description | safe }}</div>
+      </div>
+
+      <div class="quote-box">
+        <p class="quote">{{ quote }}</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

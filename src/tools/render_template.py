@@ -17,13 +17,20 @@ _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 
 def render_card_to_pdf(
-    card: dict, template_name: str, output_dir: Path, images_dir: Path, *, card_index: int
+    card: dict,
+    template_name: str,
+    output_dir: Path,
+    images_dir: Path,
+    *,
+    card_index: int,
+    visual_identity: dict | None = None,
 ) -> Path:
     """
     Render a single card dict with the named Jinja2 template to a PDF file.
 
     - Loads the template from src/templates/.
     - Exposes get_image(prompt, width, height) callable to the template.
+    - Passes visual_identity (fonts, colors) to template for styling.
     - Writes output to `output_dir/card-{card_index}.pdf`.
     - Returns the path to the generated PDF.
     """
@@ -40,7 +47,14 @@ def render_card_to_pdf(
         """Generate or retrieve a cached image as base64. Called from Jinja2 templates."""
         return get_image_base64(prompt, images_dir, size=(height, width))
 
-    template_vars["get_image"] = get_image
+    # Visual identity vars are the base layer; card fields override them if names collide.
+    # (e.g. visual_identity.description must not clobber card.description)
+    merged: dict = {}
+    if visual_identity:
+        merged.update(visual_identity)
+    merged.update(template_vars)
+    merged["get_image"] = get_image
+    template_vars = merged
 
     rendered_html = template.render(**template_vars)
 
@@ -79,11 +93,27 @@ def cards_json_to_pdfs(
         if type_field and type_field.default:
             schema_by_type[type_field.default] = cls
 
+    from lib.models import SectionTheme
+
     # Config values injected into every card's template context
     config_vars = {
         "card_size": config.card_size,
         "language": config.language or "en",
     }
+
+    def _vi_vars(card: dict) -> dict:
+        """Return flat visual-identity vars for this card, resolved to its section theme."""
+        vi = game.visual_identity
+        section = card.get("section", 0) or 0
+        themes = vi.section_themes
+        theme = themes[section] if 0 <= section < len(themes) else SectionTheme()
+        return {
+            "title_font": vi.title_font,
+            "body_font": vi.body_font,
+            "main_color": theme.main_color,
+            "accent_color": theme.accent_color,
+            "dark_color": theme.dark_color,
+        }
 
     def _resolve_template(card: dict) -> str:
         if "template" in card:
@@ -94,10 +124,20 @@ def cards_json_to_pdfs(
             return random.choice(schema_cls.templates)
         raise ValueError(f"No template found for card type {card_type!r}")
 
-    tasks = [(i, {**config_vars, **card}, _resolve_template(card)) for i, card in enumerate(cards)]
+    tasks = [
+        (i, {**config_vars, **card}, _resolve_template(card), _vi_vars(card))
+        for i, card in enumerate(cards)
+    ]
 
     results: list[Path] = Parallel(n_jobs=n_jobs)(
-        delayed(render_card_to_pdf)(card_data, template_name, output_dir, images_dir, card_index=i)
-        for i, card_data, template_name in tasks
+        delayed(render_card_to_pdf)(
+            card_data,
+            template_name,
+            output_dir,
+            images_dir,
+            card_index=i,
+            visual_identity=vi_vars,
+        )
+        for i, card_data, template_name, vi_vars in tasks
     )
     return results

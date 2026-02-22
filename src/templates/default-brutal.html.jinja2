@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<!--
+  default-brutal.html.jinja2
+
+  Brutalist minimal aesthetic: stark, bold, typographic-first design.
+  Color band as hero element, radical reduction. Unforgettable impact.
+
+  Variables: title, description, illustration, quote, section,
+             visual_identity (title_font, body_font, accent_color, main_color, dark_color),
+             card_size, language, get_image()
+-->
+{% if card_size == 'A5' %}
+  {% set title_size = '32pt' %}
+  {% set body_size = '10pt' %}
+  {% set quote_size = '9pt' %}
+  {% set header_height = '22%' %}
+  {% set padding = '7mm' %}
+{% else %}
+  {% set title_size = '20pt' %}
+  {% set body_size = '7pt' %}
+  {% set quote_size = '6pt' %}
+  {% set header_height = '20%' %}
+  {% set padding = '4mm' %}
+{% endif %}
+
+<html lang="{{ language | default('en') }}">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title }}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
+
+    @page {
+      size: {{ card_size | default('A6') }} portrait;
+      margin: 0;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+    }
+
+    body {
+      background: #ffffff;
+      color: #000000;
+      display: flex;
+      flex-direction: column;
+      font-family: {% if body_font %}'{{ body_font }}', {% endif %}'IBM Plex Mono', monospace;
+      font-size: {{ body_size }};
+      line-height: 1.6;
+    }
+
+    .card {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Bold color header as statement */
+    .header {
+      height: {{ header_height }};
+      background: {% if accent_color %}{{ accent_color }}{% else %}#000000{% endif %};
+      position: relative;
+      flex-shrink: 0;
+      display: flex;
+      align-items: flex-end;
+      padding: {{ padding }};
+      color: #ffffff;
+    }
+
+    .header-text {
+      font-family: {% if title_font %}'{{ title_font }}', {% endif %}'Courier Prime', monospace;
+      font-size: 8pt;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      line-height: 1.2;
+    }
+
+    /* Image: secondary, supporting role */
+    .image-section {
+      height: 32%;
+      overflow: hidden;
+      background: #f8f8f8;
+      flex-shrink: 0;
+    }
+
+    .image-section img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      opacity: 0.85;
+    }
+
+    .image-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ccc;
+      font-size: {{ quote_size }};
+      padding: 2mm;
+      text-align: center;
+    }
+
+    /* Stark text content */
+    .content {
+      flex: 1;
+      padding: {{ padding }};
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: #ffffff;
+    }
+
+    .title {
+      font-family: {% if title_font %}'{{ title_font }}', {% endif %}'Courier Prime', monospace;
+      font-size: {{ title_size }};
+      font-weight: 700;
+      line-height: 1.1;
+      margin-bottom: 2mm;
+      color: #000000;
+      letter-spacing: -0.5px;
+      text-transform: uppercase;
+    }
+
+    .description {
+      font-size: {{ body_size }};
+      line-height: 1.5;
+      color: #000000;
+      margin-bottom: 2mm;
+      flex: 1;
+      overflow: hidden;
+      font-family: {% if body_font %}'{{ body_font }}', {% endif %}'IBM Plex Mono', monospace;
+    }
+
+    .description b {
+      font-weight: 700;
+      color: #000000;
+      text-decoration: underline;
+      text-decoration-color: {% if accent_color %}{{ accent_color }}{% else %}#000000{% endif %};
+      text-decoration-thickness: 1.5pt;
+      text-underline-offset: 1pt;
+    }
+
+    .quote-separator {
+      width: 100%;
+      height: 1px;
+      background: #000000;
+      margin: 2mm 0;
+    }
+
+    .quote {
+      font-size: {{ quote_size }};
+      line-height: 1.4;
+      color: #000000;
+      font-style: italic;
+      font-family: {% if body_font %}'{{ body_font }}', {% endif %}'IBM Plex Mono', monospace;
+    }
+
+    .quote::before,
+    .quote::after {
+      content: "—";
+      color: {% if accent_color %}{{ accent_color }}{% else %}#000000{% endif %};
+      font-weight: 700;
+      margin: 0 1mm;
+      font-style: normal;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="header-text">CARD</div>
+    </div>
+
+    <div class="image-section">
+      {% set image_base64 = get_image(illustration, 384, 192) %}
+      {% if image_base64 %}
+        <img src="data:image/png;base64,{{ image_base64 }}" alt="{{ illustration }}">
+      {% else %}
+        <div class="image-placeholder">{{ illustration }}</div>
+      {% endif %}
+    </div>
+
+    <div class="content">
+      <div>
+        <h1 class="title">{{ title }}</h1>
+        <div class="description">{{ description | safe }}</div>
+      </div>
+
+      <div>
+        <div class="quote-separator"></div>
+        <p class="quote">{{ quote }}</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

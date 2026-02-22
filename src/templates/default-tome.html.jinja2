@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<!--
+  default-tome.html.jinja2
+
+  Academic/encyclopedic reference card. Warm cream background, structured
+  grid. A solid main_color header band carries the section number. The
+  illustration sits in a precise square at the top-right, adjacent to the
+  title. A short accent-colored rule anchors the title. The quote sits at
+  the bottom with a left accent border.
+
+  Aesthetic: atlas entry, reference library, serious scholarship.
+
+  Template variables (all optional except title/description/illustration/quote/section):
+    title, description, illustration, quote, section, tag
+    main_color, accent_color, dark_color, title_font, body_font
+    card_size ('A6' default | 'A5'), language, get_image()
+-->
+{% if card_size == 'A5' %}
+  {% set title_size = '30pt' %}
+  {% set body_size = '10.5pt' %}
+  {% set quote_size = '9pt' %}
+  {% set label_size = '6.5pt' %}
+  {% set header_h = '11mm' %}
+  {% set img_size = '52mm' %}
+  {% set pad = '8mm' %}
+{% else %}
+  {% set title_size = '19pt' %}
+  {% set body_size = '7.5pt' %}
+  {% set quote_size = '6.5pt' %}
+  {% set label_size = '5pt' %}
+  {% set header_h = '7.5mm' %}
+  {% set img_size = '34mm' %}
+  {% set pad = '5mm' %}
+{% endif %}
+
+<html lang="{{ language | default('en') }}">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title }}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;1,8..60,300&display=swap');
+
+    @page {
+      size: {{ card_size | default('A6') }} portrait;
+      margin: 0;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; }
+
+    body {
+      background: #F7F4EE;
+      color: #1c1a17;
+      font-family: {% if body_font %}'{{ body_font }}', {% endif %}'Source Serif 4', Georgia, serif;
+      font-size: {{ body_size }};
+    }
+
+    .card {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header band ── */
+    .header {
+      height: {{ header_h }};
+      flex-shrink: 0;
+      background: {% if main_color %}{{ main_color }}{% else %}#2c3e50{% endif %};
+      display: flex;
+      align-items: center;
+      padding: 0 {{ pad }};
+      gap: 2mm;
+    }
+
+    .header-num {
+      font-family: {% if title_font %}'{{ title_font }}', {% endif %}'Cormorant Garamond', serif;
+      font-size: {{ label_size }};
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.5pt;
+    }
+
+    .header-divider {
+      width: 0.5pt;
+      height: 3mm;
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+    .header-label {
+      font-family: {% if body_font %}'{{ body_font }}', {% endif %}'Source Serif 4', serif;
+      font-size: {{ label_size }};
+      font-weight: 300;
+      color: rgba(255, 255, 255, 0.65);
+      letter-spacing: 1.2pt;
+      text-transform: uppercase;
+    }
+
+    /* ── Body ── */
+    .body {
+      flex: 1;
+      padding: {{ pad }};
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Title row: title left, image right */
+    .title-row {
+      display: flex;
+      align-items: flex-start;
+      gap: {{ pad }};
+      margin-bottom: 3mm;
+    }
+
+    .title-block {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .title {
+      font-family: {% if title_font %}'{{ title_font }}', {% endif %}'Cormorant Garamond', serif;
+      font-size: {{ title_size }};
+      font-weight: 700;
+      line-height: 1.15;
+      color: #1c1a17;
+      letter-spacing: -0.3pt;
+    }
+
+    .title-rule {
+      margin-top: 2.5mm;
+      height: 1.5pt;
+      width: 10mm;
+      background: {% if accent_color %}{{ accent_color }}{% else %}#b5341e{% endif %};
+    }
+
+    .image-box {
+      width: {{ img_size }};
+      height: {{ img_size }};
+      flex-shrink: 0;
+      overflow: hidden;
+      background: #e0dcd3;
+    }
+
+    .image-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Thin hairline rule */
+    .rule {
+      height: 0.5pt;
+      background: #ccc8bf;
+      margin-bottom: 3mm;
+      flex-shrink: 0;
+    }
+
+    /* Description */
+    .description {
+      font-size: {{ body_size }};
+      line-height: 1.62;
+      color: #2e2c27;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .description b {
+      font-weight: 600;
+      color: #1c1a17;
+      border-bottom: 0.75pt solid {% if accent_color %}{{ accent_color }}{% else %}#b5341e{% endif %};
+    }
+
+    /* Quote */
+    .quote-section {
+      margin-top: auto;
+      padding-top: 3mm;
+      padding-left: 3mm;
+      border-left: 2pt solid {% if accent_color %}{{ accent_color }}{% else %}#b5341e{% endif %};
+      flex-shrink: 0;
+    }
+
+    .quote {
+      font-family: {% if body_font %}'{{ body_font }}', {% endif %}'Source Serif 4', serif;
+      font-size: {{ quote_size }};
+      font-style: italic;
+      font-weight: 300;
+      color: #666057;
+      line-height: 1.48;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+
+    <div class="header">
+      <span class="header-num">{{ "%02d" | format(section + 1) }}</span>
+      <div class="header-divider"></div>
+      <span class="header-label">Concept</span>
+    </div>
+
+    <div class="body">
+
+      <div class="title-row">
+        <div class="title-block">
+          <h1 class="title">{{ title }}</h1>
+          <div class="title-rule"></div>
+        </div>
+        <div class="image-box">
+          {% set image_base64 = get_image(illustration, 256, 256) %}
+          {% if image_base64 %}
+            <img src="data:image/png;base64,{{ image_base64 }}" alt="">
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="rule"></div>
+
+      <div class="description">{{ description | safe }}</div>
+
+      <div class="quote-section">
+        <p class="quote">{{ quote }}</p>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
