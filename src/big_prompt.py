@@ -77,6 +77,8 @@ The detailed card schemas for each card type are provided in the initial message
 
 Work through three phases in sequence. The first starts in your reasoning, and outputs the "book_plan", the second is writting "visual_identity" and the third is writting the "cards". The file is written in one shot, then refined through Quality Control iterations.
 
+**Report progress.** At key moments, briefly state what you've done so the user can see things moving: e.g. after mapping sections, list them in one line; after choosing visual identity, say which fonts and direction you chose. One or two sentences each — no need to expand.
+
 ### Phase 1 — Map the book
 
 **Start in your reasoning before starting to write card.json.**
