@@ -44,7 +44,7 @@ async def run_agent(
         permission_mode="acceptEdits",
         cwd=str(work_dir.root),
         resume=session_id,
-        model="haiku",
+        model=config.model,
     )
 
     async with ClaudeSDKClient(options=options) as client:
