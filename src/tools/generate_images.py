@@ -3,7 +3,6 @@
 import asyncio
 import base64
 import hashlib
-import json
 import os
 from pathlib import Path
 from typing import cast
@@ -95,44 +94,3 @@ def get_image_base64(
         return base64.b64encode(path.read_bytes()).decode()
     except Exception:
         return None
-
-
-def generate_images_for_cards(
-    cards_json_path: Path,
-    images_dir: Path,
-    size: tuple[int, int] = DEFAULT_SIZE,
-) -> None:
-    """
-    Generate and cache images for every card in BBGame.cards that lacks one.
-
-    Reads `image_description` from each card, calls the Runware API in parallel,
-    and writes the resulting absolute path back into cards.json under `image_path`.
-    Skips cards that already have `image_path` set.
-    """
-    from lib.models import BBGame
-
-    game_data = json.loads(cards_json_path.read_text(encoding="utf-8"))
-    game = BBGame.model_validate(game_data)
-    cards = game.cards
-
-    async def _run_all() -> None:
-        tasks = []
-        indices = []
-        for i, card in enumerate(cards):
-            card_dict = card.model_dump()
-            desc = card_dict.get("image_description") or card_dict.get("illustration")
-            if desc and not card_dict.get("image_path"):
-                tasks.append(_generate_image_async(desc, size, images_dir))
-                indices.append(i)
-
-        if not tasks:
-            return
-
-        print(f"Generating {len(tasks)} image(s)…")
-        paths = await asyncio.gather(*tasks)
-        for i, path in zip(indices, paths):
-            cards[i].image_path = str(path)  # type: ignore[attr-defined]
-
-    asyncio.run(_run_all())
-    game.cards = cards
-    cards_json_path.write_text(game.model_dump_json(indent=2, exclude_none=False), encoding="utf-8")
