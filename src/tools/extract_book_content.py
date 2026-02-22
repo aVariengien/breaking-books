@@ -8,7 +8,7 @@ from pathlib import Path
 
 _LUA_FILTER = Path(__file__).parent / "remove_footnotes.lua"
 
-_SUPPORTED_SUFFIXES = {".epub", ".html", ".htm", ".md", ".markdown"}
+_SUPPORTED_SUFFIXES = {".epub", ".html", ".htm", ".md", ".markdown", ".txt"}
 
 
 def load_book(path: Path) -> str:
@@ -24,7 +24,7 @@ def load_book(path: Path) -> str:
         return extract_book_content(path)
     elif suffix in (".html", ".htm"):
         return clean_html(path.read_text(encoding="utf-8"))
-    elif suffix in (".md", ".markdown"):
+    elif suffix in (".md", ".markdown", ".txt"):
         return path.read_text(encoding="utf-8")
     else:
         raise ValueError(
@@ -71,9 +71,12 @@ def extract_book_content(epub_path: Path) -> str:
 def clean_html(html: str) -> str:
     html = _normalize_image_paths(html)
     html = _normalize_img_tag_whitespace(html)
-    html = _remove_empty_spans(html)
-    html = _remove_href_and_id_attributes(html)
+    html = _remove_noisy_attributes(html)
     html = _remove_style_tags(html)
+    # Three times for nested tags
+    html = _remove_empty_tags(html)
+    html = _remove_empty_tags(html)
+    html = _remove_empty_tags(html)
     return html
 
 
@@ -92,12 +95,12 @@ def _normalize_img_tag_whitespace(html: str) -> str:
     return re.sub(pattern, replace_img_tag, html, flags=re.DOTALL)
 
 
-def _remove_empty_spans(html: str) -> str:
-    return re.sub(r"<span[^>]*>\s*</span>", "", html, flags=re.IGNORECASE)
+def _remove_empty_tags(html: str) -> str:
+    return re.sub(r"<[^>]*>\s*</[^>]*>", "", html, flags=re.IGNORECASE)
 
 
-def _remove_href_and_id_attributes(html: str) -> str:
-    return re.sub(r'[\s\n]+(href|id)="[^"]*"', "", html, flags=re.IGNORECASE)
+def _remove_noisy_attributes(html: str) -> str:
+    return re.sub(r'[\s\n]+(href|id|class)="[^"]*"', "", html, flags=re.IGNORECASE)
 
 
 def _remove_style_tags(html: str) -> str:

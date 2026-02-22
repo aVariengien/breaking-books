@@ -74,22 +74,6 @@ def remove_href_id_and_class_attributes(html_content: str) -> str:
     return re.sub(pattern, "", html_content, flags=re.IGNORECASE)
 
 
-def add_unique_ids(html_content: str) -> str:
-    """Add unique IDs to all HTML elements."""
-    id_counter = 0
-
-    def replace_tag(match):
-        nonlocal id_counter
-        id_counter += 1
-        # If there's whitespace after the tag name, keep it, otherwise add a space
-        end = match.group(2) or " "
-        return f'{match.group(1)} id="tag-{id_counter}"{end}'
-
-    # Match any opening HTML tag, with or without attributes
-    pattern = r"(<\w+)([\s>])"
-    return re.sub(pattern, replace_tag, html_content)
-
-
 def convert_epub_to_html(
     input_epub: Path,
     output_html: Path | None = None,
@@ -157,9 +141,6 @@ def convert_html_to_clean_html(html: str) -> str:
     # Step 3: Remove empty spans, href/id/class attributes -> less tokens
     html = remove_empty_spans(html)
     html = remove_href_id_and_class_attributes(html)
-
-    # Step 4: Add unique IDs to be able to reference specific elements
-    html = add_unique_ids(html)
 
     return html
 
