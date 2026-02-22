@@ -14,7 +14,7 @@ uv run --frozen python -m main <input.epub> [--num-cards 15] [--card-size A6] [-
 make run                  # src/web.py on port 9201
 
 # Run quality test dashboard
-make quality-tests        # quality_tests/Home.py on port 9201
+make quality-tests        # quality_tests/Home.py on port 9202
 
 # Run tests
 make test                 # ty check src/ && ruff check src/ && pytest tests/
