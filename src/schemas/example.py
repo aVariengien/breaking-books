@@ -31,7 +31,7 @@ class ExampleCard(Schema):
     )
     quote: str = Field(description="2–3 sentences quoted verbatim from the book where the example is discussed, ~60–70 words. Should feel like as much text as the description itself.")
 
-    templates: ClassVar[list[str]] = ["example-card.html.jinja2"]
+    templates: ClassVar[str] = "example-card*.html.jinja2"
 
     @classmethod
     def get_examples(cls) -> list["Schema"]:

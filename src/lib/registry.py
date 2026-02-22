@@ -34,5 +34,5 @@ def get_all_template_paths() -> list[Path]:
 
 
 def get_templates_for_schema(schema_class: type[Schema]) -> list[Path]:
-    """Return the template paths declared on a schema class's `templates` ClassVar."""
-    return [_TEMPLATES_DIR / name for name in schema_class.templates]
+    """Return template paths matching the schema's glob pattern against src/templates/."""
+    return sorted(_TEMPLATES_DIR.glob(schema_class.templates))

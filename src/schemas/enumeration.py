@@ -36,7 +36,7 @@ class Enumeration(Schema):
     )
     items: list[EnumerationItem] = Field(description="The enumerated items.")
 
-    templates: ClassVar[list[str]] = ["enumeration.html.jinja2"]
+    templates: ClassVar[str] = "enumeration*.html.jinja2"
 
     @classmethod
     def get_examples(cls) -> list["Schema"]:
