@@ -31,7 +31,7 @@ class Diagram(Schema):
     )
     caption: str = Field(description="One sentence explaining what to read in the diagram.")
 
-    templates: ClassVar[list[str]] = ["diagram.html.jinja2"]
+    templates: ClassVar[str] = "diagram*.html.jinja2"
 
     @classmethod
     def get_examples(cls) -> list["Schema"]:

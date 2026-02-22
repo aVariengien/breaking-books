@@ -23,12 +23,14 @@ class LongQuote(Schema):
 
     type: Literal["long_quote"] = "long_quote"
     quote: str = Field(description="Verbatim. 100 words max.")
-    context: str = Field(description="One sentence: where this sits in the book and what it's about.")
+    context: str = Field(
+        description="One sentence: where this sits in the book and what it's about."
+    )
     texture: str = Field(
         description="Background texture description for the image generation model. Light paper ground with a fine pattern in the section's accent color."
     )
 
-    templates: ClassVar[list[str]] = ["long-quote.html.jinja2"]
+    templates: ClassVar[str] = "long-quote*.html.jinja2"
 
     @classmethod
     def get_examples(cls) -> list["Schema"]:

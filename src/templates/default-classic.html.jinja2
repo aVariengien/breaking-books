@@ -6,24 +6,18 @@
   image at top, refined typography hierarchy. Elegant and timeless.
 
   Variables: title, description, illustration, quote, section,
-             visual_identity (title_font, body_font, accent_color, main_color, dark_color),
-             card_size, language, get_image()
--->
-{% if card_size == 'A5' %}
-  {% set title_size = '28pt' %}
-  {% set body_size = '11pt' %}
-  {% set quote_size = '10pt' %}
-  {% set margin = '8mm' %}
-  {% set image_height = '45%' %}
-{% else %}
-  {% set title_size = '18pt' %}
-  {% set body_size = '8pt' %}
-  {% set quote_size = '7pt' %}
-  {% set margin = '5mm' %}
-  {% set image_height = '50%' %}
-{% endif %}
+             visual_identity (with title_font, body_font, section_themes),
+             get_image()
 
-<html lang="{{ language | default('en') }}">
+  All cards render at A6 size. Scaling for larger sizes happens at PDF merge stage.
+-->
+{% set title_size = '18pt' %}
+{% set body_size = '8pt' %}
+{% set quote_size = '7pt' %}
+{% set margin = '5mm' %}
+{% set image_height = '50%' %}
+
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>{{ title }}</title>
@@ -52,7 +46,7 @@
       color: #1a1a1a;
       display: flex;
       flex-direction: column;
-      font-family: {% if body_font %}'{{ body_font }}', {% endif %}'Lora', serif;
+      font-family: {% if visual_identity.body_font %}'{{ visual_identity.body_font }}', {% endif %}'Lora', serif;
       font-size: {{ body_size }};
       line-height: 1.6;
     }
@@ -101,11 +95,11 @@
       flex-direction: column;
       justify-content: space-between;
       background: #ffffff;
-      border-top: 2px solid {% if main_color %}{{ main_color }}{% else %}#ddd{% endif %};
+      border-top: 2px solid {% if visual_identity.section_themes %}{{ visual_identity.section_themes[0].main_color }}{% else %}#ddd{% endif %};
     }
 
     .title {
-      font-family: {% if title_font %}'{{ title_font }}', {% endif %}'EB Garamond', serif;
+      font-family: {% if visual_identity.title_font %}'{{ visual_identity.title_font }}', {% endif %}'EB Garamond', serif;
       font-size: {{ title_size }};
       font-weight: 600;
       line-height: 1.3;
@@ -126,7 +120,7 @@
     .description b {
       font-weight: 600;
       color: #1a1a1a;
-      {% if accent_color %}border-bottom: 1px solid {{ accent_color }};{% endif %}
+      {% if visual_identity.section_themes %}border-bottom: 1px solid {{ visual_identity.section_themes[0].accent_color }};{% endif %}
     }
 
     .quote-section {
@@ -151,7 +145,7 @@
       top: -2mm;
       font-size: {{ body_size }};
       font-style: normal;
-      color: {% if main_color %}{{ main_color }}{% else %}#ccc{% endif %};
+      color: {% if visual_identity.section_themes %}{{ visual_identity.section_themes[0].main_color }}{% else %}#ccc{% endif %};
       opacity: 0.5;
     }
   </style>

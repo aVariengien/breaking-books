@@ -20,7 +20,7 @@ class Schema(BaseModel):
         description="Optional positional marker within the section.",
     )
 
-    templates: ClassVar[list[str]]
+    templates: ClassVar[str]  # glob pattern matched against src/templates/
 
     @classmethod
     def get_examples(cls) -> list["Schema"]:

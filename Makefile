@@ -10,4 +10,6 @@ quality-tests:
 	uv run --frozen streamlit run --server.port $(PORT) quality_tests/Home.py
 
 test:
+	uv run --frozen ty check src/
+	uv run --frozen ruff check src/
 	uv run --frozen pytest tests/

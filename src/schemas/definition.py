@@ -26,9 +26,7 @@ class Definition(Schema):
     etymology: str = Field(
         description="One sentence. Where the word comes from and what it literally means."
     )
-    definition: str = Field(
-        description="The definition as it applies in this book. 1–2 sentences."
-    )
+    definition: str = Field(description="The definition as it applies in this book. 1–2 sentences.")
     usage_example: str = Field(
         description="One short example sentence using the word in context from the book."
     )
@@ -36,7 +34,7 @@ class Definition(Schema):
         description="Background texture description for the image generation model. Light paper ground with a fine pattern in the section's accent color."
     )
 
-    templates: ClassVar[list[str]] = ["definition.html.jinja2"]
+    templates: ClassVar[str] = "definition*.html.jinja2"
 
     @classmethod
     def get_examples(cls) -> list["Schema"]:

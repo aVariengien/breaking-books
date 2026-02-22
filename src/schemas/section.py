@@ -38,7 +38,7 @@ class SectionCard(Schema):
         description="Visual style for the illustration. Pick from the style list."
     )
 
-    templates: ClassVar[list[str]] = ["section-card.html.jinja2"]
+    templates: ClassVar[str] = "section-card*.html.jinja2"
 
     @classmethod
     def get_examples(cls) -> list["Schema"]:

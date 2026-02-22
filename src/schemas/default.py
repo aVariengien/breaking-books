@@ -34,14 +34,7 @@ class DefaultCard(Schema):
     )
     quote: str = Field(description="One direct quote from the book.")
 
-    templates: ClassVar[list[str]] = [
-        "default-classic.html.jinja2",
-        "default-split.html.jinja2",
-        "default-brutal.html.jinja2",
-        "default-monolith.html.jinja2",
-        "default-tome.html.jinja2",
-        "default-recto.html.jinja2",
-    ]
+    templates: ClassVar[str] = "default-*.html.jinja2"
 
     @classmethod
     def get_examples(cls) -> list["Schema"]:

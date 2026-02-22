@@ -30,7 +30,7 @@ class Axis(Schema):
         description="Why this axis is useful. What does placing cards on it reveal?"
     )
 
-    templates: ClassVar[list[str]] = ["axis.html.jinja2"]
+    templates: ClassVar[str] = "axis*.html.jinja2"
 
     @classmethod
     def get_examples(cls) -> list["Schema"]:

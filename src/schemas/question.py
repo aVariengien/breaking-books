@@ -34,16 +34,14 @@ class Question(Schema):
         description="Background texture description for the image generation model. Light paper ground with a fine pattern in the section's accent color."
     )
 
-    templates: ClassVar[list[str]] = ["question.html.jinja2"]
+    templates: ClassVar[str] = "question*.html.jinja2"
 
     @classmethod
     def get_examples(cls) -> list["Schema"]:
         return [
             cls(
                 section=0,
-                question=(
-                    "Why is a map an instrument of power?"
-                ),
+                question=("Why is a map an instrument of power?"),
                 texture=(
                     "Fine topographic lines on off-white paper, drawn in the [[section's accent color]] at low opacity, thin line weight, no fill."
                 ),
