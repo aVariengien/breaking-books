@@ -11,7 +11,7 @@ from weasyprint import HTML
 from lib.models import Config, SectionTheme, VisualIdentity
 from lib.registry import get_all_schema_classes, get_templates_for_schema
 from schemas._base import Schema
-from tools.generate_images import get_image_base64
+from tools.generate_images import get_diagram_image_base64, get_image_base64
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
@@ -72,10 +72,14 @@ def render_card_to_pdf(
     # Prepare template variables
     template_vars = dict(card)
 
-    # Expose image generation function to template
+    # Expose image generation functions to templates
     def get_image(prompt: str, width: int = 768, height: int = 512) -> str | None:
-        """Generate or retrieve a cached image as base64. Called from Jinja2 templates."""
+        """Generate or retrieve a Runware cached image as base64. Called from Jinja2 templates."""
         return get_image_base64(prompt, images_dir, size=(height, width))
+
+    def get_diagram_image(prompt: str, width: int = 256, height: int = 256) -> str | None:
+        """Generate or retrieve a Gemini Flash diagram image as base64. Called from Jinja2 templates."""
+        return get_diagram_image_base64(prompt, images_dir)
 
     # Pass visual_identity as-is (not flattened); card fields override if names collide
     if visual_identity is not None:
@@ -84,6 +88,7 @@ def render_card_to_pdf(
         template_vars["visual_identity"] = visual_identity
 
     template_vars["get_image"] = get_image
+    template_vars["get_diagram_image"] = get_diagram_image
 
     rendered_html = template.render(**template_vars)
 

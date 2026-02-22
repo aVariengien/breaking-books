@@ -12,7 +12,8 @@
 #}
 
 {%- macro type_icon_class(card_type) -%}
-  {%- if card_type == 'default' -%}fa-lightbulb
+  {%- if card_type == 'book_card' -%}fa-book-open
+  {%- elif card_type == 'default' -%}fa-lightbulb
   {%- elif card_type == 'section' -%}fa-bookmark
   {%- elif card_type == 'question' -%}fa-circle-question
   {%- elif card_type == 'long_quote' -%}fa-quote-left
@@ -67,7 +68,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   background: #ffffff;
-  border: 4pt solid {{ theme.main_color }};
+  border: 4.6pt solid {{ theme.main_color }};
   position: relative;
 }
 .card.tag-top    { border-bottom: none; }

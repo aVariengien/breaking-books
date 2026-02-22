@@ -5,6 +5,7 @@ from typing import Annotated, Union
 from pydantic import Field
 
 from .axis import Axis
+from .book_card import BookCard
 from .default import DefaultCard
 from .definition import Definition
 from .diagram import Diagram
@@ -18,6 +19,7 @@ from .section import SectionCard
 Card = Annotated[
     Union[
         Axis,
+        BookCard,
         DefaultCard,
         Definition,
         Diagram,
@@ -33,6 +35,7 @@ Card = Annotated[
 __all__ = [
     "Card",
     "Axis",
+    "BookCard",
     "DefaultCard",
     "Definition",
     "Diagram",

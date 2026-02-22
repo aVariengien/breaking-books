@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+{#
+  book-card-cover.html.jinja2
+  Pure black-on-white cover card. No section color — this card belongs to no section.
+
+  Layout (top to bottom):
+  1. Icon zone   — large centered fa-book-open
+  2. Title zone  — title (bigger, underlined) + year flush-right
+  3. Content zone — author italic / hook / "About the author" label + bio
+#}
+{% from '_card_base.html.jinja2' import css_imports, tag_class %}
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    {{ css_imports(visual_identity) }}
+
+    @page { size: A6 portrait; margin: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; }
+
+    body {
+      background: #ffffff;
+      color: #111;
+      font-family: {% if visual_identity.body_font %}'{{ visual_identity.body_font }}', {% endif %}Georgia, serif;
+      font-size: 8pt;
+      line-height: 1.5;
+    }
+
+    .card {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #ffffff;
+      border: 2.5pt solid #111;
+      position: relative;
+    }
+    .card.tag-top    { border-bottom: none; }
+    .card.tag-middle { border-top: none; border-bottom: none; }
+    .card.tag-bottom { border-top: none; }
+
+    /* ── 1. Icon zone ── */
+    .icon-zone {
+      flex: 0 0 52mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1.5pt solid #111;
+    }
+    .icon-zone i {
+      font-size: 46pt;
+      color: #111;
+    }
+
+    /* ── 2. Title zone ── */
+    .title-zone {
+      flex: 0 0 auto;
+      padding: 2.5mm 4mm 2.5mm;
+      position: relative;  /* anchor for absolute year */
+    }
+    .book-title {
+      font-family: {% if visual_identity.title_font %}'{{ visual_identity.title_font }}', {% endif %}Georgia, serif;
+      font-size: 14pt;
+      font-weight: 700;
+      color: #111;
+      line-height: 1.15;
+      text-decoration: underline;
+      text-underline-offset: 1.5pt;
+      padding-right: 18mm;  /* leave room for the year */
+    }
+    .year {
+      position: absolute;
+      right: 4mm;
+      top: 2.5mm;
+      font-size: 11pt;
+      font-weight: 700;
+      color: #111;
+      line-height: 1.15;
+    }
+
+    /* ── 3. Content zone ── */
+    .content {
+      flex: 1;
+      padding: 3mm 4mm 3mm;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .book-author {
+      font-size: 7.5pt;
+      color: #111;
+      font-style: italic;
+      margin-bottom: 2.5mm;
+    }
+    .hook {
+      font-size: 7pt;
+      color: #111;
+      line-height: 1.55;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── About the author ── */
+    .about-header {
+      margin-top: 2.5mm;
+      padding-top: 2mm;
+      border-top: 1pt solid #111;
+      font-size: 6.5pt;
+      font-weight: 700;
+      color: #111;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 1.5mm;
+    }
+    .about-header i {
+      margin-right: 1.5mm;
+    }
+    .author-bio {
+      font-size: 6.5pt;
+      color: #111;
+      line-height: 1.55;
+    }
+  </style>
+</head>
+<body>
+  <div class="card{{ tag_class(tag) }}">
+
+    <div class="icon-zone">
+      <i class="fa-solid fa-book-open"></i>
+    </div>
+
+    <div class="title-zone">
+      <div class="book-title">{{ title }}</div>
+      {% if published_year %}
+        <div class="year">{{ published_year }}</div>
+      {% endif %}
+    </div>
+
+    <div class="content">
+      <div class="book-author">{{ author }}</div>
+      <p class="hook">{{ hook }}</p>
+      <div class="about-header">
+        <i class="fa-solid fa-user"></i>About the author
+      </div>
+      <p class="author-bio">{{ author_bio }}</p>
+    </div>
+
+  </div>
+</body>
+</html>

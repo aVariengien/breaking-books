@@ -16,6 +16,7 @@ dependencies = [
     "jinja2>=3.1.6",
     "pydantic>=2.11.4",
     "runware>=0.4.10",
+    "google-genai>=1.0.0",
     "streamlit>=1.45.1",
     "streamlit-pdf-viewer>=0.0.24",
     "typer>=0.15.4",

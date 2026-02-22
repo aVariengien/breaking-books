@@ -55,6 +55,11 @@ The absolute path to cards.json is: `{cards_json_path}`
   }},
   "cards": [
     {{
+      "type": "book_card",
+      "section": 0,
+      ... // BookCard fields — always first
+    }},
+    {{
       "type": "<card-type>",
       "section": 0,
       ... // other card fields
@@ -343,6 +348,8 @@ For accents, signatures, and warmth. Never for body copy.
 At this point you already started writting the complete `BBGame` object to `cards.json` in one shot. `book_plan` and `visual_identity` are already there — this phase is detailed execution.
 
 #### Card writing guidelines
+
+**The first card in `cards` must always be a `BookCard` (section=0).** Fill its fields only from information clearly present in the book or from well-established public knowledge. Set `published_year` to null if the date is uncertain or the book is recent. This card does not count toward the target card count and needs no cross-references.
 
 **Language and Tone:**
 

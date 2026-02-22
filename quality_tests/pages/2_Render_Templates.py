@@ -45,6 +45,13 @@ def _build_example_cards() -> dict[str, dict]:
 
 EXAMPLE_CARDS: dict[str, dict] = _build_example_cards()
 
+_TAG_VALUES: list[str | None] = [None, "top_end", "middle", "bottom_end"]
+_TAG_LABELS = ["none (standalone)", "top_end — first in group", "middle", "bottom_end — last in group"]
+
+
+def _card_with_tag(card: dict, tag: str | None) -> dict:
+    return {**card, "tag": tag}
+
 
 def _all_templates_for_type(card_type: str, template_glob: str) -> list[str]:
     """
@@ -91,7 +98,8 @@ def _render_to_png_bytes(
 
 def run_cli() -> None:
     vi_classic = PREDEFINED_STYLES["classic"].model_dump()
-    for cls in get_all_schema_classes():
+    all_classes = list(get_all_schema_classes())
+    for cls in all_classes:
         type_field = cls.model_fields.get("type")
         card_type = type_field.default if type_field else "unknown"
         card = EXAMPLE_CARDS.get(card_type)
@@ -104,6 +112,27 @@ def run_cli() -> None:
                 print(f"[OK]   {card_type} / {template}: {len(data):,} bytes")
             except Exception as e:
                 print(f"[WARN] {card_type} / {template}: {e}")
+
+    # Tag system — render one card type with all four tag values
+    print("\n--- Tag system ---")
+    demo_cls = next(
+        (c for c in all_classes if c.model_fields.get("type") and c.model_fields["type"].default in EXAMPLE_CARDS),
+        None,
+    )
+    if demo_cls:
+        demo_type = demo_cls.model_fields["type"].default
+        demo_templates = _all_templates_for_type(demo_type, demo_cls.templates)
+        if demo_templates:
+            tmpl = demo_templates[0]
+            base_card = EXAMPLE_CARDS[demo_type]
+            print(f"Using: {demo_type} / {tmpl}")
+            for tag_val, label in zip(_TAG_VALUES, _TAG_LABELS):
+                tagged = _card_with_tag(base_card, tag_val)
+                try:
+                    data = _render_to_png_bytes(tagged, tmpl, visual_identity=vi_classic)
+                    print(f"[OK]   tag={tag_val!r} ({label}): {len(data):,} bytes")
+                except Exception as e:
+                    print(f"[WARN] tag={tag_val!r} ({label}): {e}")
 
 
 def run_streamlit() -> None:
@@ -121,6 +150,19 @@ def run_streamlit() -> None:
     )
     selected_style = PREDEFINED_STYLES[style_name].model_dump()
 
+    @st.cache_data(show_spinner=False)
+    def _cached_render(card_json: str, template_name: str, style_json: str) -> bytes | str:
+        try:
+            return _render_to_png_bytes(
+                json.loads(card_json),
+                template_name,
+                visual_identity=json.loads(style_json),
+            )
+        except Exception as e:
+            return f"{type(e).__name__}: {e}"
+
+    style_json = json.dumps(selected_style, sort_keys=True, default=str)
+
     for cls in get_all_schema_classes():
         type_field = cls.model_fields.get("type")
         card_type = type_field.default if type_field else "unknown"
@@ -137,19 +179,7 @@ def run_streamlit() -> None:
 
         templates = _all_templates_for_type(card_type, cls.templates)
 
-        @st.cache_data(show_spinner=False)
-        def _cached_render(card_json: str, template_name: str, style_json: str) -> bytes | str:
-            try:
-                return _render_to_png_bytes(
-                    json.loads(card_json),
-                    template_name,
-                    visual_identity=json.loads(style_json),
-                )
-            except Exception as e:
-                return f"{type(e).__name__}: {e}"
-
         card_json = json.dumps(card, sort_keys=True, default=str)
-        style_json = json.dumps(selected_style, sort_keys=True, default=str)
         COLS_PER_ROW = 3
         for i in range(0, len(templates), COLS_PER_ROW):
             chunk = templates[i : i + COLS_PER_ROW]
@@ -159,6 +189,46 @@ def run_streamlit() -> None:
                     st.caption(f"`{template}`")
                     with st.spinner("Rendering…"):
                         result = _cached_render(card_json, template, style_json)
+                    if isinstance(result, bytes):
+                        st.image(result)
+                    else:
+                        st.warning(result)
+
+    # -----------------------------------------------------------------------
+    # Tag system — shows all four tag values side-by-side for one card type
+    # -----------------------------------------------------------------------
+    st.divider()
+    st.header("Tag system")
+    st.caption(
+        "Same card rendered with each `tag` value. "
+        "The border tag system removes sides to visually group sequential cards: "
+        "`top_end` removes the bottom border, `middle` removes top + bottom, `bottom_end` removes the top."
+    )
+
+    all_classes = list(get_all_schema_classes())
+    taggable_types = [
+        cls.model_fields["type"].default
+        for cls in all_classes
+        if cls.model_fields.get("type") and cls.model_fields["type"].default in EXAMPLE_CARDS
+    ]
+
+    demo_type = st.selectbox("Card type", taggable_types, key="tag_demo_type")
+    demo_cls = next(
+        (c for c in all_classes if c.model_fields.get("type") and c.model_fields["type"].default == demo_type),
+        None,
+    )
+    if demo_cls:
+        demo_templates = _all_templates_for_type(demo_type, demo_cls.templates)
+        demo_template = st.selectbox("Template", demo_templates, key="tag_demo_template")
+        if demo_template:
+            base_card = EXAMPLE_CARDS[demo_type]
+            cols = st.columns(len(_TAG_VALUES))
+            for col, tag_val, label in zip(cols, _TAG_VALUES, _TAG_LABELS):
+                with col:
+                    st.caption(f"`tag={tag_val!r}`  \n{label}")
+                    tagged_json = json.dumps(_card_with_tag(base_card, tag_val), sort_keys=True, default=str)
+                    with st.spinner("Rendering…"):
+                        result = _cached_render(tagged_json, demo_template, style_json)
                     if isinstance(result, bytes):
                         st.image(result)
                     else:
