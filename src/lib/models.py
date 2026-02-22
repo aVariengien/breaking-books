@@ -13,7 +13,9 @@ from schemas import Card
 class SectionTheme(BaseModel):
     """Theme for a card section."""
 
-    accent_color: str = "#000000"
+    main_color: str = "#FFFFFF"
+    dark_color: str = "#000000"
+    accent_color: str = "#FF6B6B"
 
 
 class VisualIdentity(BaseModel):

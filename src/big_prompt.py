@@ -45,9 +45,9 @@ The absolute path to cards.json is: `{cards_json_path}`
     "title_font": "Font name for card titles (e.g., 'Arial')",
     "body_font": "Font name for card body text (e.g., 'Georgia')",
     "section_themes": [
-      {{"accent_color": "#FF6B6B"}},
-      {{"accent_color": "#4ECDC4"}},
-      {{"accent_color": "#45B7D1"}}
+      {{"main_color": "#FFFFFF", "dark_color": "#2C3E50", "accent_color": "#FF6B6B"}},
+      {{"main_color": "#F8F9FA", "dark_color": "#34495E", "accent_color": "#4ECDC4"}},
+      {{"main_color": "#ECF0F1", "dark_color": "#1A1A1A", "accent_color": "#45B7D1"}}
     ]
   }},
   "cards": [
@@ -84,7 +84,10 @@ Choose the card type that best captures the nature of the idea:
    - `description`: freeform aesthetic direction (mood, color scheme, visual metaphors, etc.)
    - `title_font`: choose a font name for card titles
    - `body_font`: choose a font name for card body text
-   - `section_themes`: array of themes, one per section. Each theme has an `accent_color` (hex code, e.g., `"#FF6B6B"`)
+   - `section_themes`: array of themes, one per section. Each theme has:
+     - `main_color`: primary background color (hex code)
+     - `dark_color`: dark text/foreground color (hex code)
+     - `accent_color`: highlight/accent color (hex code)
 
 3. **Write cards** — for each section, draft cards covering the key ideas.
    Aim for the target card count in config, distributed proportionally across sections.
