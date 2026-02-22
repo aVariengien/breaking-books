@@ -11,6 +11,7 @@ import os
 import shutil
 from collections import Counter
 from pathlib import Path
+from typing import Any
 
 from cerebras.cloud.sdk import Cerebras
 from cerebras.cloud.sdk.types.chat.chat_completion import ChatCompletionResponse
@@ -120,10 +121,14 @@ def quality_control(
         out_dir.qc_report_path(version).write_text(report, encoding="utf-8")
         return report  # no point continuing if schema is broken
 
-    cards: list[dict] = json.loads(cards_json_path.read_text(encoding="utf-8"))
+    from lib.models import BBGame
 
-    # Step 2 — Section balance
-    balance_text, balance_severity = _check_section_balance(cards, config)
+    game_data = json.loads(cards_json_path.read_text(encoding="utf-8"))
+    game = BBGame.model_validate(game_data)
+    cards = [c.model_dump() for c in game.cards]
+
+    # Step 2 — Section balance and visual identity consistency
+    balance_text, balance_severity = _check_section_balance(cards, game, config)
     severity = max(severity, balance_severity)
     sections.append(f"## Card count and section balance\n\n{balance_text}")
 
@@ -159,6 +164,8 @@ _card_adapter: TypeAdapter[Card] = TypeAdapter(Card)
 
 def _check_json_structure(cards_json_path: Path) -> list[str]:
     """Parse cards.json; return a list of structural / schema validation errors."""
+    from lib.models import BBGame
+
     if not cards_json_path.exists():
         return [f"File not found: {cards_json_path}"]
 
@@ -167,13 +174,21 @@ def _check_json_structure(cards_json_path: Path) -> list[str]:
     except json.JSONDecodeError as exc:
         return [f"Invalid JSON: {exc}"]
 
-    if not isinstance(raw, list):
-        return [f"Top-level value must be a JSON array, got {type(raw).__name__}"]
-
     errors: list[str] = []
-    for i, item in enumerate(raw):
+
+    # Validate the top-level bbGame structure
+    try:
+        game = BBGame.model_validate(raw)
+    except ValidationError as exc:
+        for e in exc.errors(include_url=False):
+            loc = ".".join(str(p) for p in e["loc"]) if e["loc"] else "(root)"
+            errors.append(f"game.{loc}: {e['msg']}")
+        return errors
+
+    # Validate each card in the cards array
+    for i, card in enumerate(game.cards):
         try:
-            _card_adapter.validate_python(item)
+            _card_adapter.validate_python(card.model_dump())
         except ValidationError as exc:
             for e in exc.errors(include_url=False):
                 loc = ".".join(str(p) for p in e["loc"]) if e["loc"] else "(root)"
@@ -182,11 +197,13 @@ def _check_json_structure(cards_json_path: Path) -> list[str]:
     return errors
 
 
-def _check_section_balance(cards: list[dict], config: Config) -> tuple[str, int]:
+def _check_section_balance(cards: list[dict], game: Any, config: Config) -> tuple[str, int]:
     """
     Return (human-readable summary, severity) where severity is
     0 (all good), 1 (nit), or 2 (needs improvement).
+    Checks both card distribution across sections and visual_identity.section_themes alignment.
     """
+
     total = len(cards)
     target = config.num_cards
     lines: list[str] = []
@@ -244,6 +261,23 @@ def _check_section_balance(cards: list[dict], config: Config) -> tuple[str, int]
         severity = max(severity, 1)
     else:
         lines.append("All sections are well balanced.")
+
+    # Check section themes alignment
+    num_themes = len(game.visual_identity.section_themes)
+    if num_themes == 0:
+        lines.append("\nVisual identity: No section themes defined yet.")
+        severity = max(severity, 1)
+    elif num_themes != num_sections:
+        lines.append(
+            f"\nVisual identity mismatch: {num_sections} sections in cards "
+            f"but {num_themes} section themes in visual_identity. "
+            f"Update visual_identity.section_themes to match the number of sections."
+        )
+        severity = max(severity, 2)
+    else:
+        lines.append(
+            f"\nVisual identity: {num_themes} section themes defined (matches card sections)."
+        )
 
     return "\n".join(lines), severity
 

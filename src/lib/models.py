@@ -1,9 +1,36 @@
-"""Core data models: Config, WorkDir, OutDir."""
+"""Core data models: Config, WorkDir, OutDir, VisualIdentity, BBGame."""
+
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel
+
+from schemas import Card
+
+
+class SectionTheme(BaseModel):
+    """Theme for a card section."""
+
+    accent_color: str = "#000000"
+
+
+class VisualIdentity(BaseModel):
+    """Visual identity for the game: fonts, colors, and aesthetic."""
+
+    description: str = "Freeform description of the book's visual identity."
+    title_font: str = "Arial"
+    body_font: str = "Georgia"
+    section_themes: list[SectionTheme] = []
+
+
+class BBGame(BaseModel):
+    """Top-level game structure: metadata + cards."""
+
+    book_plan: str = "Freeform section plan and strategic notes."
+    visual_identity: VisualIdentity = VisualIdentity()
+    cards: list[Card] = []
 
 
 class Config(BaseModel):

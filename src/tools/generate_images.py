@@ -1,6 +1,7 @@
 """Generate card images via Runware, with a file cache keyed by prompt hash."""
 
 import asyncio
+import base64
 import hashlib
 import json
 import os
@@ -18,20 +19,21 @@ _NEGATIVE_PROMPT = "Text, label, diagram, blurry, low quality, distorted"
 DEFAULT_SIZE: tuple[int, int] = (512, 768)
 
 
-def _prompt_cache_path(prompt: str, cache_dir: Path) -> Path:
-    """Return the cache path for a given prompt: cache_dir/{sha256(prompt)}.png"""
-    digest = hashlib.sha256(prompt.encode()).hexdigest()
+def _prompt_cache_path(prompt: str, size: tuple[int, int], cache_dir: Path) -> Path:
+    """Return the cache path for a given prompt+size: cache_dir/{sha256(prompt + size)}.png"""
+    cache_key = f"{prompt}_{size[0]}_{size[1]}"
+    digest = hashlib.sha256(cache_key.encode()).hexdigest()
     return cache_dir / f"{digest}.png"
 
 
-def image_cache_path(image_description: str, images_dir: Path) -> Path:
-    """Return the cache path for an image by its description. Same as _prompt_cache_path."""
-    return _prompt_cache_path(image_description, images_dir)
+def image_cache_path(image_description: str, size: tuple[int, int], images_dir: Path) -> Path:
+    """Return the cache path for an image by its description and size."""
+    return _prompt_cache_path(image_description, size, images_dir)
 
 
 async def _generate_image_async(prompt: str, size: tuple[int, int], cache_dir: Path) -> Path:
     """Download one image from Runware, saving it as a PNG in cache_dir."""
-    cache_path = _prompt_cache_path(prompt, cache_dir)
+    cache_path = _prompt_cache_path(prompt, size, cache_dir)
     if cache_path.exists():
         return cache_path
 
@@ -69,14 +71,30 @@ async def _generate_image_async(prompt: str, size: tuple[int, int], cache_dir: P
 
 def generate_image(prompt: str, size: tuple[int, int], cache_dir: Path) -> Path:
     """
-    Generate a single image from a text prompt.
+    Generate a single image from a text prompt and size.
 
-    Uses a file cache: if `cache_dir/{sha256(prompt)}.png` exists, return it directly.
+    Uses a file cache: if `cache_dir/{sha256(prompt + size)}.png` exists, return it directly.
     Otherwise calls the Runware API and saves the result.
 
     Returns the path to the cached PNG file.
     """
     return asyncio.run(_generate_image_async(prompt, size, cache_dir))
+
+
+def get_image_base64(
+    prompt: str, images_dir: Path, size: tuple[int, int] = DEFAULT_SIZE
+) -> str | None:
+    """
+    Generate or retrieve a cached image as base64-encoded PNG.
+
+    Can be called from Jinja2 templates to embed images directly.
+    Returns the base64 string, or None if generation fails.
+    """
+    try:
+        path = generate_image(prompt, size, images_dir)
+        return base64.b64encode(path.read_bytes()).decode()
+    except Exception:
+        return None
 
 
 def generate_images_for_cards(
@@ -85,20 +103,25 @@ def generate_images_for_cards(
     size: tuple[int, int] = DEFAULT_SIZE,
 ) -> None:
     """
-    Generate and cache images for every card in cards.json that lacks one.
+    Generate and cache images for every card in BBGame.cards that lacks one.
 
     Reads `image_description` from each card, calls the Runware API in parallel,
     and writes the resulting absolute path back into cards.json under `image_path`.
     Skips cards that already have `image_path` set.
     """
-    cards: list[dict] = json.loads(cards_json_path.read_text(encoding="utf-8"))
+    from lib.models import BBGame
+
+    game_data = json.loads(cards_json_path.read_text(encoding="utf-8"))
+    game = BBGame.model_validate(game_data)
+    cards = game.cards
 
     async def _run_all() -> None:
         tasks = []
         indices = []
         for i, card in enumerate(cards):
-            desc = card.get("image_description")
-            if desc and not card.get("image_path"):
+            card_dict = card.model_dump()
+            desc = card_dict.get("image_description") or card_dict.get("illustration")
+            if desc and not card_dict.get("image_path"):
                 tasks.append(_generate_image_async(desc, size, images_dir))
                 indices.append(i)
 
@@ -108,7 +131,8 @@ def generate_images_for_cards(
         print(f"Generating {len(tasks)} image(s)…")
         paths = await asyncio.gather(*tasks)
         for i, path in zip(indices, paths):
-            cards[i]["image_path"] = str(path)
+            cards[i].image_path = str(path)  # type: ignore[attr-defined]
 
     asyncio.run(_run_all())
-    cards_json_path.write_text(json.dumps(cards, indent=2, ensure_ascii=False), encoding="utf-8")
+    game.cards = cards
+    cards_json_path.write_text(game.model_dump_json(indent=2, exclude_none=False), encoding="utf-8")

@@ -1,6 +1,5 @@
 """Render card dicts to PDF via Jinja2 + WeasyPrint."""
 
-import base64
 import json
 import random
 from pathlib import Path
@@ -12,7 +11,7 @@ from weasyprint import HTML
 from lib.models import Config
 from lib.registry import get_all_schema_classes
 from schemas._base import Schema
-from tools.generate_images import image_cache_path
+from tools.generate_images import get_image_base64
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
@@ -24,7 +23,7 @@ def render_card_to_pdf(
     Render a single card dict with the named Jinja2 template to a PDF file.
 
     - Loads the template from src/templates/.
-    - Resolves image_base64 from the image cache via image_cache_path(image_description, images_dir).
+    - Exposes get_image(prompt, width, height) callable to the template.
     - Writes output to `output_dir/card-{card_index}.pdf`.
     - Returns the path to the generated PDF.
     """
@@ -36,15 +35,12 @@ def render_card_to_pdf(
 
     template_vars = dict(card)
 
-    # Resolve image from cache using the description as the key
-    image_description = template_vars.get("image_description")
-    if image_description:
-        img_path = image_cache_path(image_description, images_dir)
-        template_vars["image_base64"] = (
-            base64.b64encode(img_path.read_bytes()).decode() if img_path.exists() else None
-        )
-    else:
-        template_vars["image_base64"] = None
+    # Expose image generation function to template
+    def get_image(prompt: str, width: int = 768, height: int = 512) -> str | None:
+        """Generate or retrieve a cached image as base64. Called from Jinja2 templates."""
+        return get_image_base64(prompt, images_dir, size=(height, width))
+
+    template_vars["get_image"] = get_image
 
     rendered_html = template.render(**template_vars)
 
@@ -62,15 +58,19 @@ def cards_json_to_pdfs(
     n_jobs: int = -1,
 ) -> list[Path]:
     """
-    Render all cards in cards.json to individual PDF files.
+    Render all cards in bbGame.cards to individual PDF files.
 
     Selects a template for each card (randomly from schema.templates, or as
     specified in the card dict). Runs in parallel via joblib when n_jobs != 1.
 
     Returns the list of generated PDF paths, in card order.
     """
+    from lib.models import BBGame
+
     output_dir.mkdir(parents=True, exist_ok=True)
-    cards: list[dict] = json.loads(cards_json_path.read_text(encoding="utf-8"))
+    game_data = json.loads(cards_json_path.read_text(encoding="utf-8"))
+    game = BBGame.model_validate(game_data)
+    cards = [c.model_dump() for c in game.cards]
 
     # Build map: card type string → schema class
     schema_by_type: dict[str, type[Schema]] = {}

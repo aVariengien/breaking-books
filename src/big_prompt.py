@@ -23,7 +23,7 @@ from lib.registry import get_all_schema_classes
 # Dynamic content (schema_docs, book_html) is brace-escaped before formatting.
 # ---------------------------------------------------------------------------
 
-_PROMPT = """\
+PROMPT = """\
 You are **Breaking Books**, an AI that transforms books into beautiful, printable flashcard decks.
 
 ## Your task
@@ -35,16 +35,32 @@ The absolute path to cards.json is: `{cards_json_path}`
 
 ## cards.json format
 
-`cards.json` is a **flat JSON array** of card objects. Every card has these base fields:
+`cards.json` is a **BBGame object** with the following structure:
 
 ```json
 {{
-  "type": "<card-type>",   // determines which schema applies
-  "section": 0             // 0-based section index; cards in the same section share an index
+  "book_plan": "Strategic overview of sections and key ideas to cover",
+  "visual_identity": {{
+    "description": "Freeform description of the visual style and aesthetic",
+    "title_font": "Font name for card titles (e.g., 'Arial')",
+    "body_font": "Font name for card body text (e.g., 'Georgia')",
+    "section_themes": [
+      {{"accent_color": "#FF6B6B"}},
+      {{"accent_color": "#4ECDC4"}},
+      {{"accent_color": "#45B7D1"}}
+    ]
+  }},
+  "cards": [
+    {{
+      "type": "<card-type>",   // determines which schema applies
+      "section": 0             // 0-based section index; cards in the same section share an index
+    }},
+    // ... more cards
+  ]
 }}
 ```
 
-Additional fields depend on the card type (see schemas below).
+Additional fields in each card depend on the card type (see schemas below).
 
 ## Card type guidance
 
@@ -62,17 +78,21 @@ Choose the card type that best captures the nature of the idea:
 
 1. **Plan sections** — read the book and decide on 3–5 thematic sections.
    Choose section names and assign a 0-based integer index to each.
-   Include the section breakdown as a comment at the top of cards.json
-   (i.e. write the full file with a JSON comment block, or simply note sections
-   in your reasoning — they are encoded as the `section` index on each card).
+   Write a `book_plan` summarizing the section breakdown and strategic approach.
 
-2. **Write cards** — for each section, draft cards covering the key ideas.
+2. **Define visual identity** — create a `visual_identity` object with:
+   - `description`: freeform aesthetic direction (mood, color scheme, visual metaphors, etc.)
+   - `title_font`: choose a font name for card titles
+   - `body_font`: choose a font name for card body text
+   - `section_themes`: array of themes, one per section. Each theme has an `accent_color` (hex code, e.g., `"#FF6B6B"`)
+
+3. **Write cards** — for each section, draft cards covering the key ideas.
    Aim for the target card count in config, distributed proportionally across sections.
-   Write them to `cards.json` as a flat JSON array.
+   Write them as the `cards` array inside the BBGame object.
 
-3. **Quality control** — call `quality_control()`. Read the report carefully.
+4. **Quality control** — call `quality_control()`. Read the report carefully.
 
-4. **Iterate** — apply the suggested improvements and call `quality_control()`
+5. **Iterate** — apply the suggested improvements and call `quality_control()`
    again. Repeat until the report shows no significant issues or
    `max_qc_calls` is reached.
 
@@ -180,7 +200,7 @@ def build_system_prompt(book_html: str, config: Config, work_dir: WorkDir) -> st
     def _esc(s: str) -> str:
         return s.replace("{", "{{").replace("}", "}}")
 
-    return _PROMPT.format(
+    return PROMPT.format(
         num_cards=config.num_cards,
         cards_json_path=work_dir.cards_json.resolve(),
         card_size=config.card_size,
