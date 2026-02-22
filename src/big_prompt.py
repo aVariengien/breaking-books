@@ -196,7 +196,7 @@ Safe defaults. Clean, broadly legible, minimal personality.
 - **DM Sans** — Both. Softer Inter. Approachable and modern. Good for products and editorial.
 - **Work Sans** — Both. Warm grotesque, slight quirk. Good for blogs, marketing, general web.
 - **Fira Sans** — Both. Humanist, slightly technical. Mozilla DNA. Great for developer tools and editorial.
-- **Source Sans Pro** — Both. Adobe's utility sans. Reliable at any size. Pairs naturally with Source Serif.
+- **Source Sans 3** — Both. Adobe's utility sans. Reliable at any size. Pairs naturally with Source Serif 4.
 - **Roboto** — Both. Android default. Neutral and competent. Ubiquitous — fine for utility, generic for brand.
 - **Open Sans** — Both. Broad and friendly. Maximum readability for diverse audiences.
 - **Lato** — Both. Humanist warmth. Rounded feel. Great for consumer-facing, healthcare, education.
@@ -251,7 +251,7 @@ For sustained reading, editorial, and contexts where warmth and tradition matter
 - **Libre Baskerville** — Both. Classic Baskerville revival. Authoritative. Academic, legal, professional.
 - **Alegreya** — Both. Literary humanist. Expressive. Longform reading, book publishing, magazines.
 - **Spectral** — Both. Screen-optimized editorial elegance. Slightly condensed. Dense content, longform.
-- **Source Serif Pro** — Both. Cooler than Lora, still warm. Editorial and product writing.
+- **Source Serif 4** — Both. Cooler than Lora, still warm. Editorial and product writing.
 - **PT Serif** — Both. Humanist, multilingual-friendly. Good companion to PT Sans.
 - **Cardo** — Both. Classical and scholarly. Academic, antiquarian, literary.
 - **Proza Libre** — Both. Quirky bridge between serif and sans. Readable and distinctive.
@@ -298,13 +298,13 @@ Strong personality. Headlines and short text only. Not for body.
 
 - **Staatliches** — Display. Extreme compressed all-caps. Propaganda poster energy. German design.
 - **Anton** — Display. Condensed bold impact. Headlines, posters, sports.
-- **Big Shoulders Display** — Display. Super-wide, bold. Strong editorial and sports identity.
+- **Big Shoulders** — Display. Super-wide, bold. Strong editorial and sports identity.
 - **Syncopate** — Display. Wide geometric all-caps. Futuristic and architectural.
 - **Audiowide** — Display. Sci-fi/tech aesthetic. Gaming, software, tech brands.
 - **Orbitron** — Display. Geometric sci-fi. Retro-futurism and gaming.
 - **Exo 2** — Both. Sci-fi adjacent but still readable in body. Tech and gaming brands.
 - **Righteous** — Display. Retro-friendly. 70s warmth. Fun consumer brands.
-- **Fredoka One** — Display. Bubbly and rounded. Children's products, friendly apps.
+- **Fredoka** — Display. Bubbly and rounded. Children's products, friendly apps.
 - **Comfortaa** — Both. Very rounded geometric. Casual and friendly. Light consumer use.
 - **Pacifico** — Display. Hand-lettered feel. Vintage Americana and casual brands.
 - **Special Elite** — Display. Typewriter roughness. Editorial nostalgia, journalism aesthetics.
@@ -331,13 +331,13 @@ For accents, signatures, and warmth. Never for body copy.
 | Fraunces | Work Sans | Quirky literary |
 | Syne | Inter | Tech / avant-garde |
 | Space Grotesk | Space Mono | Developer / hacker |
-| Bricolage Grotesque | Source Serif Pro | Strong brand editorial |
+| Bricolage Grotesque | Source Serif 4 | Strong brand editorial |
 | Josefin Sans | Lato | Clean geometric \+ warmth |
 | Montserrat | Libre Baskerville | Bold marketing \+ authority |
 | IBM Plex Sans | IBM Plex Mono | Developer documentation |
 | Raleway | Karla | Elegant and minimal |
 | Oswald | Open Sans | News and media |
-| Abril Fatface | Source Sans Pro | Magazine / bold consumer |
+| Abril Fatface | Source Sans 3 | Magazine / bold consumer |
 | Bodoni Moda | Crimson Pro | Fashion editorial |
 
 ### Phase 3 — Write the cards

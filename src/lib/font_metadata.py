@@ -14,6 +14,7 @@ FONT_SPECS: dict[str, str] = {
     "Anton": "Anton:wght@400",
     "Archivo Narrow": "Archivo+Narrow:ital,wght@0,400;1,400;0,500;1,500;0,600;1,600;0,700;1,700",
     "Arvo": "Arvo:ital,wght@0,400;1,400;0,700;1,700",
+    "Big Shoulders": "Big+Shoulders:wght@100;200;300;400;500;600;700;800;900",
     "Audiowide": "Audiowide:wght@400",
     "Azeret Mono": "Azeret+Mono:ital,wght@0,100;1,100;0,200;1,200;0,300;1,300;0,400;1,400;0,500;1,500;0,600;1,600;0,700;1,700;0,800;1,800;0,900;1,900",
     "Barlow": "Barlow:ital,wght@0,100;1,100;0,200;1,200;0,300;1,300;0,400;1,400;0,500;1,500;0,600;1,600;0,700;1,700;0,800;1,800;0,900;1,900",
@@ -40,6 +41,7 @@ FONT_SPECS: dict[str, str] = {
     "Exo 2": "Exo+2:ital,wght@0,100;1,100;0,200;1,200;0,300;1,300;0,400;1,400;0,500;1,500;0,600;1,600;0,700;1,700;0,800;1,800;0,900;1,900",
     "Familjen Grotesk": "Familjen+Grotesk:ital,wght@0,400;1,400;0,500;1,500;0,600;1,600;0,700;1,700",
     "Fira Code": "Fira+Code:wght@300;400;500;600;700",
+    "Fredoka": "Fredoka:wght@300;400;500;600;700",
     "Fira Sans": "Fira+Sans:ital,wght@0,100;1,100;0,200;1,200;0,300;1,300;0,400;1,400;0,500;1,500;0,600;1,600;0,700;1,700;0,800;1,800;0,900;1,900",
     "Fjalla One": "Fjalla+One:wght@400",
     "Fraunces": "Fraunces:ital,wght@0,100;1,100;0,200;1,200;0,300;1,300;0,400;1,400;0,500;1,500;0,600;1,600;0,700;1,700;0,800;1,800;0,900;1,900",
@@ -90,6 +92,8 @@ FONT_SPECS: dict[str, str] = {
     "Sacramento": "Sacramento:wght@400",
     "Satisfy": "Satisfy:wght@400",
     "Source Code Pro": "Source+Code+Pro:ital,wght@0,200;1,200;0,300;1,300;0,400;1,400;0,500;1,500;0,600;1,600;0,700;1,700;0,800;1,800;0,900;1,900",
+    "Source Sans 3": "Source+Sans+3:ital,wght@0,200;1,200;0,300;1,300;0,400;1,400;0,500;1,500;0,600;1,600;0,700;1,700;0,800;1,800;0,900;1,900",
+    "Source Serif 4": "Source+Serif+4:ital,wght@0,200;1,200;0,300;1,300;0,400;1,400;0,500;1,500;0,600;1,600;0,700;1,700;0,800;1,800;0,900;1,900",
     "Space Grotesk": "Space+Grotesk:wght@300;400;500;600;700",
     "Space Mono": "Space+Mono:ital,wght@0,400;1,400;0,700;1,700",
     "Special Elite": "Special+Elite:wght@400",
@@ -105,9 +109,3 @@ FONT_SPECS: dict[str, str] = {
     "Work Sans": "Work+Sans:ital,wght@0,100;1,100;0,200;1,200;0,300;1,300;0,400;1,400;0,500;1,500;0,600;1,600;0,700;1,700;0,800;1,800;0,900;1,900",
     "Yeseva One": "Yeseva+One:wght@400",
 }
-
-# Fonts not found in the Google Fonts API (may need name correction):
-# - 'Big Shoulders Display'
-# - 'Fredoka One'
-# - 'Source Sans Pro'
-# - 'Source Serif Pro'
