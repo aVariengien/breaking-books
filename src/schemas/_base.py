@@ -21,3 +21,8 @@ class Schema(BaseModel):
     )
 
     templates: ClassVar[list[str]]
+
+    @classmethod
+    def get_examples(cls) -> list["Schema"]:
+        """Return example instances of this schema. Override in subclasses to provide examples."""
+        return []

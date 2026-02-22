@@ -1,6 +1,5 @@
 """Central location for the agent's instructions."""
 
-import importlib
 import json
 
 from lib.models import Config, WorkDir
@@ -132,7 +131,6 @@ def build_schema_docs() -> str:
         lines.append(f'### `{cls.__name__}` — `"type": "{type_val}"`')
 
         # --- description: class docstring ---
-        mod = importlib.import_module(cls.__module__)
         if cls.__doc__:
             lines.append("")
             lines.append(cls.__doc__.strip())
@@ -145,7 +143,7 @@ def build_schema_docs() -> str:
         lines.append("```")
 
         # --- examples ---
-        examples: list = getattr(mod, "EXAMPLES", [])
+        examples = cls.get_examples()
         if examples:
             lines.append("")
             label = "Example" if len(examples) == 1 else "Examples"

@@ -37,25 +37,27 @@ class DefaultCard(Schema):
 
     templates: ClassVar[list[str]] = ["default-card.html.jinja2"]
 
-
-EXAMPLES: list[DefaultCard] = [
-    DefaultCard(
-        section=0,
-        title="The Noble Loser",
-        description=(
-            "The figure who is clearly on the right side of history but achieves nothing in "
-            "the here and now. Someone whose convictions are spotless, whose awareness is high, "
-            "but who falls into the trap of believing that being right is the same as making a "
-            "difference. The five traps that create Noble Losers — the <b>illusion of awareness</b>, "
-            "of good intentions, of right reasons, of <b>purity</b>, and of synergy — each offer a "
-            "different way for good people to waste their energy while the problems they care about fester."
-        ),
-        illustration=(
-            "A lone figure standing on a cliff edge, arms crossed, overlooking a burning valley "
-            "below, expression resolute but body motionless."
-        ),
-        illustration_style="Film grain, golden hour, melancholic.",
-        quote="His open resistance was brave but futile.",
-        tag=None,
-    )
-]
+    @classmethod
+    def get_examples(cls) -> list["Schema"]:
+        """Return example DefaultCard instances."""
+        return [
+            cls(
+                section=0,
+                title="The Noble Loser",
+                description=(
+                    "The figure who is clearly on the right side of history but achieves nothing in "
+                    "the here and now. Someone whose convictions are spotless, whose awareness is high, "
+                    "but who falls into the trap of believing that being right is the same as making a "
+                    "difference. The five traps that create Noble Losers — the <b>illusion of awareness</b>, "
+                    "of good intentions, of right reasons, of <b>purity</b>, and of synergy — each offer a "
+                    "different way for good people to waste their energy while the problems they care about fester."
+                ),
+                illustration=(
+                    "A lone figure standing on a cliff edge, arms crossed, overlooking a burning valley "
+                    "below, expression resolute but body motionless."
+                ),
+                illustration_style="Film grain, golden hour, melancholic.",
+                quote="His open resistance was brave but futile.",
+                tag=None,
+            )
+        ]

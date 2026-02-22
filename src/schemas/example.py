@@ -33,31 +33,33 @@ class ExampleCard(Schema):
 
     templates: ClassVar[list[str]] = ["example-card.html.jinja2"]
 
-
-EXAMPLES: list[ExampleCard] = [
-    ExampleCard(
-        section=0,
-        title="Rosa Parks Was Not a Seamstress",
-        description=(
-            "The Montgomery bus boycott wasn't a tired seamstress acting on impulse — Rosa Parks "
-            "was a trained activist. The boycott was planned months ahead by Jo Ann Robinson and "
-            "the Women's Political Council, who printed 35,000 leaflets overnight. They chose Parks "
-            "over Claudette Colvin — an unmarried pregnant teenager the white press would have "
-            "destroyed — and the entire operation, from the icon to the legal team to the 381-day "
-            "carpool, was a masterclass in strategic moral reframing: the polar opposite of the "
-            "<b>Noble Loser</b>."
-        ),
-        illustration=(
-            "A woman sitting perfectly still on a bus seat, hands folded in her lap, while "
-            "everyone around her is in frantic motion — standing, pointing, shouting. She is "
-            "the only calm figure in the frame."
-        ),
-        illustration_style="Black and white photography, high contrast.",
-        quote=(
-            "We planned the protest long before Mrs Parks was arrested. Strategically, the success "
-            "of Parks as the symbol of the boycott turned, in part, on obscuring her longstanding "
-            "political activity."
-        ),
-        tag=None,
-    )
-]
+    @classmethod
+    def get_examples(cls) -> list["Schema"]:
+        """Return example ExampleCard instances."""
+        return [
+            cls(
+                section=0,
+                title="Rosa Parks Was Not a Seamstress",
+                description=(
+                    "The Montgomery bus boycott wasn't a tired seamstress acting on impulse — Rosa Parks "
+                    "was a trained activist. The boycott was planned months ahead by Jo Ann Robinson and "
+                    "the Women's Political Council, who printed 35,000 leaflets overnight. They chose Parks "
+                    "over Claudette Colvin — an unmarried pregnant teenager the white press would have "
+                    "destroyed — and the entire operation, from the icon to the legal team to the 381-day "
+                    "carpool, was a masterclass in strategic moral reframing: the polar opposite of the "
+                    "<b>Noble Loser</b>."
+                ),
+                illustration=(
+                    "A woman sitting perfectly still on a bus seat, hands folded in her lap, while "
+                    "everyone around her is in frantic motion — standing, pointing, shouting. She is "
+                    "the only calm figure in the frame."
+                ),
+                illustration_style="Black and white photography, high contrast.",
+                quote=(
+                    "We planned the protest long before Mrs Parks was arrested. Strategically, the success "
+                    "of Parks as the symbol of the boycott turned, in part, on obscuring her longstanding "
+                    "political activity."
+                ),
+                tag=None,
+            )
+        ]
