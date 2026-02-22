@@ -16,16 +16,15 @@ class DefaultCard(Schema):
     terms as signals to the player that another card exists with that name. If you'd naturally
     bold a word in a textbook, bold it here.
 
-    The description should be tight and clear but not skeletal — roughly three sentences that
-    together give a reader enough to understand the idea and feel its weight. Make sure every
-    word in the description can be understood by a player who has never read the book. If a
-    term is specialized, either define it inline or make sure there is a Definition card for it.
+    The description should be tight: two sentences. Name the idea and why it matters. Make
+    sure every word can be understood by a player who has never read the book. If a term is
+    specialized, define it inline or make sure a Definition card exists for it.
     """
 
     type: Literal["default"] = "default"
     title: str = Field(description="The concept, named plainly. 3–6 words.")
     description: str = Field(
-        description="What it means and why it matters. ~3 sentences. HTML <b>bold</b> for key terms that are titles of other cards."
+        description="What it means and why it matters. 2 sentences max. HTML <b>bold</b> for key terms that are titles of other cards."
     )
     illustration: str = Field(
         description="Scene or metaphor that evokes the concept. English. No text or labels."
@@ -39,18 +38,15 @@ class DefaultCard(Schema):
 
     @classmethod
     def get_examples(cls) -> list["Schema"]:
-        """Return example DefaultCard instances."""
         return [
             cls(
                 section=0,
                 title="The Noble Loser",
                 description=(
-                    "The figure who is clearly on the right side of history but achieves nothing in "
-                    "the here and now. Someone whose convictions are spotless, whose awareness is high, "
-                    "but who falls into the trap of believing that being right is the same as making a "
-                    "difference. The five traps that create Noble Losers — the <b>illusion of awareness</b>, "
-                    "of good intentions, of right reasons, of <b>purity</b>, and of synergy — each offer a "
-                    "different way for good people to waste their energy while the problems they care about fester."
+                    "The figure who is clearly on the right side of history but changes nothing — "
+                    "someone whose convictions are spotless and whose impact is zero. Each of the "
+                    "<b>Five Illusions of the Noble Loser</b> offers a different way for good people "
+                    "to waste their energy while the problems they care about fester."
                 ),
                 illustration=(
                     "A lone figure standing on a cliff edge, arms crossed, overlooking a burning valley "
