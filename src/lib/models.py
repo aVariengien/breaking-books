@@ -20,7 +20,6 @@ class SectionTheme(BaseModel):
 
 class VisualIdentity(BaseModel):
     """Visual identity for the game: fonts, colors, and aesthetic."""
-
     description: str = "Freeform description of the book's visual identity."
     title_font: str = "Arial"
     body_font: str = "Georgia"

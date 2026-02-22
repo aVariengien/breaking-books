@@ -67,13 +67,25 @@ CARD_TYPE_COLORS: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 
-def _epubs() -> list[Path]:
-    return sorted(DATA_DIR.glob("*.epub"))
+_SUPPORTED_GLOBS = ("*.epub", "*.html", "*.htm", "*.md", "*.markdown")
 
 
-@st.cache_data(show_spinner="Extracting book content…")
-def _cached_extract(epub_path_str: str) -> str:
-    return extract_book_content(Path(epub_path_str))
+def _book_files() -> list[Path]:
+    files: list[Path] = []
+    for pattern in _SUPPORTED_GLOBS:
+        files.extend(DATA_DIR.glob(pattern))
+    return sorted(files)
+
+
+@st.cache_data(show_spinner="Loading book content…")
+def _load_book(path_str: str) -> str:
+    """Load book content: EPUB → pandoc extraction; HTML/MD → read directly."""
+    path = Path(path_str)
+    suffix = path.suffix.lower()
+    if suffix == ".epub":
+        return extract_book_content(path)
+    # HTML and Markdown are used verbatim — no extraction needed.
+    return path.read_text(encoding="utf-8")
 
 
 def _build_image_prompt(card_dict: dict) -> str | None:
@@ -240,13 +252,13 @@ def run_streamlit() -> None:
     with st.sidebar:
         st.header("Setup")
 
-        epubs = _epubs()
-        if not epubs:
-            st.error(f"No EPUB files found in `{DATA_DIR}`")
+        book_files = _book_files()
+        if not book_files:
+            st.error(f"No supported book files found in `{DATA_DIR}` (epub, html, md)")
             st.stop()
 
-        selected_epub: Path = st.selectbox(  # type: ignore[assignment]
-            "EPUB file", epubs, format_func=lambda p: p.name
+        selected_file: Path = st.selectbox(  # type: ignore[assignment]
+            "Book file", book_files, format_func=lambda p: p.name
         )
 
         st.divider()
@@ -273,21 +285,25 @@ def run_streamlit() -> None:
         user_preferences=user_prefs,
     )
 
-    # Detect EPUB change to reset session state
-    epub_key = str(selected_epub)
-    if st.session_state.get("_epub_key") != epub_key:
+    # Detect file change to reset session state
+    file_key = str(selected_file)
+    if st.session_state.get("_file_key") != file_key:
         for k in ("llm_response", "game", "image_paths"):
             st.session_state.pop(k, None)
-        st.session_state["_epub_key"] = epub_key
+        st.session_state["_file_key"] = file_key
 
-    # ---- Step 1: Extract book ----
-    st.subheader("Step 1 — Extract book")
+    # ---- Step 1: Load book ----
+    suffix = selected_file.suffix.lower()
+    step1_label = "Step 1 — Extract book (EPUB → HTML)" if suffix == ".epub" else "Step 1 — Load book"
+    st.subheader(step1_label)
 
-    book_html = _cached_extract(str(selected_epub))
-    st.success(f"Extracted **{len(book_html):,}** characters from `{selected_epub.name}`")
+    book_html = _load_book(str(selected_file))
+    action = "Extracted" if suffix == ".epub" else "Loaded"
+    preview_lang = "html" if suffix in (".html", ".htm", ".epub") else "markdown"
+    st.success(f"{action} **{len(book_html):,}** characters from `{selected_file.name}`")
 
     with st.expander("Preview (first 3 000 chars)"):
-        st.code(book_html[:3000], language="html")
+        st.code(book_html[:3000], language=preview_lang)
 
     # ---- Step 2: Build prompt ----
     st.subheader("Step 2 — Build prompt")

@@ -41,7 +41,7 @@ The absolute path to cards.json is: `{cards_json_path}`
 {{
   "book_plan": "Strategic overview of sections, chains, and narrative paths (freeform markdown, a few pages)",
   "visual_identity": {{
-    "description": "Freeform description of the visual style and aesthetic, split per section",
+    "description": "2-3 pages description of the visual style and aesthetic, with one clear vision per section",
     "title_font": "Font name for card titles",
     "body_font": "Font name for card body text",
     "section_themes": [

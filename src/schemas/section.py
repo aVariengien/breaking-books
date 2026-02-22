@@ -26,7 +26,7 @@ class SectionCard(Schema):
 
     type: Literal["section"] = "section"
     title: str = Field(
-        description='Section title. Format: "Section N: [Section Name]". The section number must be explicit.'
+        description='Section title. Format: "Section N: [Section name]". The section number must be explicit. Sentence case: only the first word of the section name and proper nouns are capitalised.'
     )
     description: str = Field(
         description="2–3 sentences max. Close previous section if any; open this one. Leave it open — don't explain everything."
@@ -45,7 +45,7 @@ class SectionCard(Schema):
         return [
             cls(
                 section=1,
-                title="Section 2: The Anatomy of Failure",
+                title="Section 2: The anatomy of failure",
                 description=(
                     "Section 1 asked why smart people believe wrong things — and found that conviction alone "
                     "doesn't explain it. Here the question shifts: what specific illusions keep well-meaning "

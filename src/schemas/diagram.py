@@ -25,7 +25,7 @@ class Diagram(Schema):
     """
 
     type: Literal["diagram"] = "diagram"
-    title: str = Field(description="What the diagram shows.")
+    title: str = Field(description="What the diagram shows. Sentence case: only the first word and proper nouns are capitalised.")
     diagram_prompt: str = Field(
         description="Detailed instructions for generating the diagram. Specify structure, elements, relationships, labels, and layout."
     )
@@ -38,7 +38,7 @@ class Diagram(Schema):
         return [
             cls(
                 section=0,
-                title="The Build-Measure-Learn Loop",
+                title="The Build-Measure-Learn loop",
                 diagram_prompt=(
                     "A circular loop with three stages arranged clockwise: BUILD (top), MEASURE "
                     "(bottom-right), LEARN (bottom-left). Arrows connect each stage to the next. Inside "

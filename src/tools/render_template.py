@@ -6,6 +6,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from joblib import Parallel, delayed
+from weasyprint import HTML
 
 from lib.models import Config
 from lib.registry import get_all_schema_classes
@@ -58,7 +59,6 @@ def render_card_to_pdf(
     rendered_html = template.render(**template_vars)
 
     pdf_path = output_dir / f"card-{card_index}.pdf"
-    from weasyprint import HTML  # lazy import — requires libgobject/pango at runtime only
     HTML(string=rendered_html, base_url=str(_TEMPLATES_DIR)).write_pdf(pdf_path)
     return pdf_path
 

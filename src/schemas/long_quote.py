@@ -15,14 +15,14 @@ class LongQuote(Schema):
     gravitational center of a section. Another reason to use a LongQuote: to show the author's
     style. A LongQuote lets the players taste the author's voice directly.
 
-    No more than 100 words, so it fits comfortably on a 10×15 cm card to be read aloud. Add
-    one line of context so players know where in the book it sits and what it addresses.
+    Aim for 60–70 words — long enough to have weight, short enough to read aloud in 1 minute.
+    Add one line of context so players know where in the book it sits and what it addresses.
 
     Aim for 1–3 per book.
     """
 
     type: Literal["long_quote"] = "long_quote"
-    quote: str = Field(description="Verbatim. 100 words max.")
+    quote: str = Field(description="Verbatim. 60–70 words — meaty enough to feel like a real excerpt.")
     context: str = Field(description="One sentence: where this sits in the book and what it's about.")
     texture: str = Field(
         description="Background texture description for the image generation model. Light paper ground with a fine pattern in the section's accent color."

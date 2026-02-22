@@ -21,7 +21,7 @@ class Definition(Schema):
     """
 
     type: Literal["definition"] = "definition"
-    word: str = Field(description="The term being defined.")
+    word: str = Field(description="The term being defined. Word casing: only proper nouns are capitalised.")
     part_of_speech: str = Field(description="noun, verb, adjective, etc.")
     etymology: str = Field(
         description="One sentence. Where the word comes from and what it literally means."
@@ -43,7 +43,7 @@ class Definition(Schema):
         return [
             cls(
                 section=0,
-                word="Moral Reframing",
+                word="moral reframing",
                 part_of_speech="noun",
                 etymology=(
                     "From moral (Latin moralis, concerning character) + reframing (re- + frame, to place "

@@ -23,7 +23,7 @@ class Axis(Schema):
     """
 
     type: Literal["axis"] = "axis"
-    title: str = Field(description="The name of the dimension.")
+    title: str = Field(description="The name of the dimension. Sentence case: only the first word and proper nouns are capitalised.")
     low_end: str = Field(description="What it means to score low. A few words.")
     high_end: str = Field(description="What it means to score high. A few words.")
     description: str = Field(

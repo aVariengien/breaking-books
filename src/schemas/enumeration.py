@@ -8,7 +8,7 @@ from ._base import Schema
 class EnumerationItem(BaseModel):
     """A single item within an Enumeration card."""
 
-    label: str = Field(description="The item name. A few words.")
+    label: str = Field(description="The item name. A few words. Sentence case.")
     gloss: str = Field(
         description="What it means. As brief as the number of items demands: a sentence for 3 items, seven words for 8 items."
     )
@@ -30,7 +30,7 @@ class Enumeration(Schema):
     """
 
     type: Literal["enumeration"] = "enumeration"
-    title: str = Field(description="What is being enumerated.")
+    title: str = Field(description="What is being enumerated. Sentence case: only the first word and proper nouns are capitalised.")
     description: str = Field(
         description="One sentence: what this group is and why it exists as a unit."
     )
@@ -43,7 +43,7 @@ class Enumeration(Schema):
         return [
             cls(
                 section=0,
-                title="Five Illusions of the Noble Loser",
+                title="Five illusions of the noble loser",
                 description=(
                     "Five persistent myths about how social change works, each one a trap that lets good "
                     "people feel righteous while achieving nothing."
@@ -54,11 +54,11 @@ class Enumeration(Schema):
                         gloss="Knowing about injustice doesn't mean you'll act on it. The belief-behaviour gap is vast.",
                     ),
                     EnumerationItem(
-                        label="Good Intentions",
+                        label="Good intentions",
                         gloss="Most charities are never rigorously evaluated; 75% of those that are show small or no effects.",
                     ),
                     EnumerationItem(
-                        label="Right Reasons",
+                        label="Right reasons",
                         gloss="The right thing often happens for the wrong reasons. <b>Moral reframing</b> exploits this.",
                     ),
                     EnumerationItem(
