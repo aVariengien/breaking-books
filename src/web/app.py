@@ -5,13 +5,10 @@ Run in dev mode:   BB_DEV=1 streamlit run src/web/app.py  (adds dev pages)
 """
 
 import os
-import sys
-from pathlib import Path
 
 import streamlit as st
 
-ROOT = Path(__file__).parents[2]
-sys.path.insert(0, str(ROOT / "src"))
+st.set_page_config(page_title="Breaking Books", layout="wide")
 
 prod_pages = [
     st.Page("prod_pages/1_Generator.py", title="Generator", icon="📚"),

@@ -362,8 +362,6 @@ def _sidebar() -> tuple[Any, int, str, str, str | None, int, str]:
 
 
 def main() -> None:
-    """Entry point. Sidebar config + main area for agent output and results."""
-    st.set_page_config(page_title="Breaking Books", layout="wide")
     _init_state()
 
     uploaded_file, num_cards, card_size, model, language, max_qc_calls, user_preferences = (

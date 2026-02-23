@@ -105,3 +105,23 @@ def _remove_noisy_attributes(html: str) -> str:
 
 def _remove_style_tags(html: str) -> str:
     return re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.IGNORECASE | re.DOTALL)
+
+
+if __name__ == "__main__":
+    # Quick quality check: run on an EPUB from data/ and print the extracted HTML.
+    # Usage: python -m tools.extract_book_content [path/to/book.epub]
+    import random
+    import sys
+    from pathlib import Path
+
+    data_dir = Path(__file__).parents[2] / "data"
+    if len(sys.argv) > 1:
+        epub = Path(sys.argv[1])
+    else:
+        epubs = sorted(data_dir.glob("*.epub"))
+        if not epubs:
+            sys.exit(f"No EPUB files found in {data_dir}")
+        epub = random.choice(epubs)
+        print(f"Picked: {epub.name}", file=sys.stderr)
+
+    print(extract_book_content(epub))

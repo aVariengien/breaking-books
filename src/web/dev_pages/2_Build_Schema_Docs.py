@@ -1,28 +1,12 @@
-"""Dev: build_schema_docs — rendered schema documentation for the agent prompt.
+"""Dev: build_schema_docs — rendered schema documentation for the agent prompt."""
 
-CLI:       python src/web/dev_pages/2_Build_Schema_Docs.py
-"""
+import streamlit as st
 
-import sys
-from pathlib import Path
-
-ROOT = Path(__file__).parents[3]
-sys.path.insert(0, str(ROOT / "src"))
-
-from big_prompt import build_schema_docs  # noqa: E402
-from lib.registry import get_all_schema_classes  # noqa: E402
-from lib.streamlit_utils import in_streamlit  # noqa: E402
-
-
-def run_cli() -> None:
-    classes = get_all_schema_classes()
-    print(f"Found {len(classes)} schema class(es): {[c.__name__ for c in classes]}\n")
-    print(build_schema_docs())
+from big_prompt import build_schema_docs
+from lib.registry import get_all_schema_classes
 
 
 def run_streamlit() -> None:
-    import streamlit as st
-
     st.title("Build Schema Docs")
     st.caption("Registry → agent prompt schema section")
 
@@ -41,7 +25,4 @@ def run_streamlit() -> None:
     st.metric("Total characters", f"{len(docs):,}")
 
 
-if in_streamlit():
-    run_streamlit()
-else:
-    run_cli()
+run_streamlit()

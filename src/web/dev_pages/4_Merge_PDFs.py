@@ -1,31 +1,22 @@
-"""Dev: merge_pdfs_to_print — card PDFs → printable sheet.
+"""Dev: merge_pdfs_to_print — card PDFs → printable sheet."""
 
-CLI:      python src/web/dev_pages/4_Merge_PDFs.py
-"""
-
-import sys
 import tempfile
 from pathlib import Path
 from typing import Literal
 
 import streamlit as st
 
-ROOT = Path(__file__).parents[3]
-sys.path.insert(0, str(ROOT / "src"))
-
-from lib.example_cards import build_example_cards  # noqa: E402
-from lib.registry import get_all_schema_classes, get_templates_for_schema  # noqa: E402
-from lib.streamlit_utils import in_streamlit  # noqa: E402
-from tools.merge_pdfs import merge_pdfs_to_print  # noqa: E402
-from tools.pdf_to_pngs import pdf_to_pngs  # noqa: E402
-from tools.render_template import PREDEFINED_STYLES, render_card_to_pdf  # noqa: E402
+from lib.example_cards import build_example_cards
+from lib.registry import get_all_schema_classes, get_templates_for_schema
+from tools.merge_pdfs import merge_pdfs_to_print
+from tools.pdf_to_pngs import pdf_to_pngs
+from tools.render_template import PREDEFINED_STYLES, render_card_to_pdf
 
 EXAMPLE_CARDS = build_example_cards()
-_IMAGE_CACHE_DIR = ROOT / "data" / "image_cache"
+_IMAGE_CACHE_DIR = Path(__file__).parents[3] / "data" / "image_cache"
 
 
 def _card_type_and_template_pairs() -> list[tuple[str, str]]:
-    """Return (card_type, template_name) for each schema with an example."""
     pairs: list[tuple[str, str]] = []
     for cls in get_all_schema_classes():
         type_field = cls.model_fields.get("type")
@@ -42,7 +33,6 @@ _CARD_TEMPLATE_PAIRS = _card_type_and_template_pairs()
 
 
 def _make_sample_cards(n: int, out_dir: Path) -> list[Path]:
-    """Render n cards cycling through example cards (same source as Render Templates)."""
     if not _CARD_TEMPLATE_PAIRS:
         raise ValueError("No example cards available; add get_examples() to schemas")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -52,7 +42,7 @@ def _make_sample_cards(n: int, out_dir: Path) -> list[Path]:
     for i in range(n):
         card_type, template_name = _CARD_TEMPLATE_PAIRS[i % len(_CARD_TEMPLATE_PAIRS)]
         card = EXAMPLE_CARDS[card_type].copy()
-        card["section"] = i % 3  # Vary section for theme variety
+        card["section"] = i % 3
         pdfs.append(
             render_card_to_pdf(
                 card,
@@ -68,7 +58,6 @@ def _make_sample_cards(n: int, out_dir: Path) -> list[Path]:
 
 @st.cache_data(show_spinner="Rendering sample cards…")
 def _get_cached_sample_card_pdfs(n: int) -> list[bytes]:
-    """Render n sample cards and return their PDF bytes. Cached per n."""
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
         out_dir = tmp_dir / "cards"
@@ -76,20 +65,7 @@ def _get_cached_sample_card_pdfs(n: int) -> list[bytes]:
         return [p.read_bytes() for p in paths]
 
 
-def run_cli() -> None:
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_dir = Path(tmp)
-        pdfs = _make_sample_cards(4, tmp_dir / "cards")
-        for card_size in ("A6", "A5"):
-            out = tmp_dir / f"merged_{card_size}.pdf"
-            result = merge_pdfs_to_print(pdfs, out, card_size=card_size)
-            layout = "4-up" if card_size == "A6" else "2-up"
-            print(f"{card_size} ({layout}): {result.stat().st_size:,} bytes")
-
-
 def run_streamlit() -> None:
-    import streamlit as st
-
     st.title("Merge PDFs")
     st.caption(
         "Card PDFs → A4 landscape sheet. A6 = 4 per page, A5 = 2 per page. Portrait cards rotate to fit."
@@ -122,7 +98,4 @@ def run_streamlit() -> None:
         st.image(data)
 
 
-if in_streamlit():
-    run_streamlit()
-else:
-    run_cli()
+run_streamlit()

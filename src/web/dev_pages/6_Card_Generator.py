@@ -4,24 +4,19 @@ import asyncio
 import json
 import os
 import re
-import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).parents[3]
-sys.path.insert(0, str(ROOT / "src"))
+import streamlit as st
+from cerebras.cloud.sdk import Cerebras
 
-import streamlit as st  # noqa: E402
-from cerebras.cloud.sdk import Cerebras  # noqa: E402
+from big_prompt import build_initial_query, build_system_prompt
+from lib.models import BBGame, Config, WorkDir
+from tools.extract_book_content import extract_book_content
+from tools.generate_images import DEFAULT_SIZE, _generate_image_async
 
-from big_prompt import build_initial_query, build_system_prompt  # noqa: E402
-from lib.models import BBGame, Config, WorkDir  # noqa: E402
-from lib.streamlit_utils import in_streamlit  # noqa: E402
-from tools.extract_book_content import extract_book_content  # noqa: E402
-from tools.generate_images import DEFAULT_SIZE, _generate_image_async  # noqa: E402
-
-DATA_DIR = ROOT / "data"
-IMAGES_CACHE_DIR = ROOT / "data" / "image_cache"
+DATA_DIR = Path(__file__).parents[3] / "data"
+IMAGES_CACHE_DIR = Path(__file__).parents[3] / "data" / "image_cache"
 
 # ---------------------------------------------------------------------------
 # Fast-mode prefix injected before the full agent system prompt.
@@ -492,7 +487,4 @@ def run_streamlit() -> None:
                     _render_card(card_dict, img)
 
 
-if in_streamlit():
-    run_streamlit()
-else:
-    print("Run with: BB_DEV=1 streamlit run src/web/app.py")
+run_streamlit()

@@ -1,10 +1,10 @@
 PORT := 9201
 
 dev:
-	BB_DEV=1 uv run --frozen streamlit run --server.port $(PORT) src/web/app.py
+	PYTHONPATH=src BB_DEV=1 uv run --frozen streamlit run --server.port $(PORT) src/web/app.py
 
 run:
-	uv run --frozen streamlit run --server.port $(PORT) src/web/app.py
+	PYTHONPATH=src uv run --frozen streamlit run --server.port $(PORT) src/web/app.py
 
 run-main:
 	uv run --frozen python -m main

@@ -548,3 +548,13 @@ def build_initial_query(book_html: str) -> str:
         schema_docs=_esc(schema_docs),
         book_html=_esc(book_html),
     )
+
+
+if __name__ == "__main__":
+    # Quick check: print the rendered schema docs as seen by the agent.
+    # Usage: python -m big_prompt
+    from lib.registry import get_all_schema_classes
+
+    classes = get_all_schema_classes()
+    print(f"Found {len(classes)} schema class(es): {[c.__name__ for c in classes]}\n", flush=True)
+    print(build_schema_docs())

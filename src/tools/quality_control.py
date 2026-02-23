@@ -340,3 +340,30 @@ def _visual_review(cards_json_path: Path, config: Config, work_dir: WorkDir) -> 
     Returns a summary string of visual issues found.
     """
     raise NotImplementedError()
+
+
+if __name__ == "__main__":
+    # Quick check: run QC on a cards.json and print the report.
+    # Usage: python -m tools.quality_control [path/to/cards.json]
+    import random
+    import sys
+    import tempfile
+    from pathlib import Path
+
+    data_dir = Path(__file__).parents[2] / "data"
+    if len(sys.argv) > 1:
+        cards_json_path = Path(sys.argv[1])
+    else:
+        json_files = sorted(data_dir.glob("*.json"))
+        if not json_files:
+            sys.exit(f"No JSON files found in {data_dir}")
+        cards_json_path = random.choice(json_files)
+        print(f"Picked: {cards_json_path.name}", file=sys.stderr)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        from lib.models import Config, OutDir, WorkDir
+
+        work_dir = WorkDir.create(tmp_path / "tmp")
+        out_dir = OutDir.create(tmp_path / "out")
+        print(quality_control(cards_json_path, Config(num_cards=15), work_dir, out_dir))
