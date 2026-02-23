@@ -5,10 +5,11 @@ from pathlib import Path
 
 import streamlit as st
 
+from lib.constants import PROJECT_ROOT
 from lib.models import Config, OutDir, WorkDir
 from tools.quality_control import quality_control
 
-DATA_DIR = Path(__file__).parents[3] / "data"
+DATA_DIR = PROJECT_ROOT / "data"
 
 
 def _json_files() -> list[Path]:

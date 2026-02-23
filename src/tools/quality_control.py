@@ -17,14 +17,13 @@ from cerebras.cloud.sdk import Cerebras
 from cerebras.cloud.sdk.types.chat.chat_completion import ChatCompletionResponse
 from pydantic import TypeAdapter, ValidationError
 
+from lib.constants import QUALITY_CONTROL_MODEL
 from lib.models import Config, OutDir, WorkDir
 from schemas import Card
 
 # ------------------------------------------------------------------
 # LLM review configuration
 # ------------------------------------------------------------------
-
-CEREBRAS_MODEL = "gpt-oss-120b"
 
 LLM_REVIEW_SYSTEM = """\
 You are a meticulous editor reviewing a set of flash cards for Breaking Books — a collaborative card game where players build mind maps from a non-fiction book. Each card should feel like a coherent piece of a larger whole: similar visual weight, similar conceptual scale, similar tone. Check for consistency throughout the deck — do the cards feel like they belong together? Identify concrete, actionable problems — not vague praise or minor nitpicks. Be direct and specific: quote the offending card title when flagging an issue. Respond in the same language as the cards.\
@@ -308,7 +307,7 @@ def _llm_review(cards: list[dict], language: str | None) -> tuple[str, int]:
     )
 
     response = client.chat.completions.create(
-        model=CEREBRAS_MODEL,
+        model=QUALITY_CONTROL_MODEL,
         messages=[
             {"role": "system", "content": LLM_REVIEW_SYSTEM},
             {"role": "user", "content": user_message},

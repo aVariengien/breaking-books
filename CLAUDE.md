@@ -167,6 +167,8 @@ Jinja2 + WeasyPrint HTML templates that render cards to PDF. Each schema class d
 
 Run with `make test`. The command also runs `ty` type-checking and `ruff` linting. Add a quick test when adding new code.
 
+A lot of files can also be run as CLI scripts for smoke testing and checking quality. You should run them when modifying corresponding code.
+
 ### Web UI (`src/web/`)
 
 Streamlit app with two modes:
@@ -190,4 +192,4 @@ src/web/
     └── 6_Card_Generator.py
 ```
 
-Dev pages can also be run as CLI scripts for direct inspection (no Streamlit needed).
+When adding new pages, update the `st.navigation()` call in `src/web/app.py`.

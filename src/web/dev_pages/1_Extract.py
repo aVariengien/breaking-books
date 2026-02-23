@@ -4,9 +4,10 @@ from pathlib import Path
 
 import streamlit as st
 
+from lib.constants import PROJECT_ROOT
 from tools.extract_book_content import extract_book_content
 
-DATA_DIR = Path(__file__).parents[3] / "data"
+DATA_DIR = PROJECT_ROOT / "data"
 
 
 def _epubs() -> list[Path]:

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from lib.constants import IMAGE_CACHE_DIR, QUALITY_TEST_RENDERS_DIR
 from lib.example_cards import build_example_cards
 from lib.models import SectionTheme, VisualIdentity
 from lib.registry import get_all_schema_classes, get_templates_for_schema
@@ -12,9 +13,6 @@ from tools.render_template import (
     PREDEFINED_STYLES,
     render_one_template,
 )
-
-_IMAGE_CACHE_DIR = Path(__file__).parents[3] / "data" / "image_cache"
-_RENDERS_DIR = Path(__file__).parents[3] / "data" / "quality_test_renders"
 
 EXAMPLE_CARDS: dict[str, dict] = build_example_cards()
 
@@ -97,7 +95,7 @@ def run_streamlit() -> None:
 
     st.divider()
 
-    output_dir = _RENDERS_DIR / "streamlit"
+    output_dir = QUALITY_TEST_RENDERS_DIR / "streamlit"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for cls in get_all_schema_classes():
@@ -127,7 +125,7 @@ def run_streamlit() -> None:
                             template_name,
                             template_path.stem,
                             output_dir,
-                            _IMAGE_CACHE_DIR,
+                            IMAGE_CACHE_DIR,
                             selected_style,
                         )
                         png_dir = (

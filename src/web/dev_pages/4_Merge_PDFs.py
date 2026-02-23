@@ -6,6 +6,7 @@ from typing import Literal
 
 import streamlit as st
 
+from lib.constants import IMAGE_CACHE_DIR
 from lib.example_cards import build_example_cards
 from lib.registry import get_all_schema_classes, get_templates_for_schema
 from tools.merge_pdfs import merge_pdfs_to_print
@@ -13,7 +14,6 @@ from tools.pdf_to_pngs import pdf_to_pngs
 from tools.render_template import PREDEFINED_STYLES, render_card_to_pdf
 
 EXAMPLE_CARDS = build_example_cards()
-_IMAGE_CACHE_DIR = Path(__file__).parents[3] / "data" / "image_cache"
 
 
 def _card_type_and_template_pairs() -> list[tuple[str, str]]:
@@ -36,7 +36,7 @@ def _make_sample_cards(n: int, out_dir: Path) -> list[Path]:
     if not _CARD_TEMPLATE_PAIRS:
         raise ValueError("No example cards available; add get_examples() to schemas")
     out_dir.mkdir(parents=True, exist_ok=True)
-    _IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     vi = PREDEFINED_STYLES["classic"].model_dump()
     pdfs = []
     for i in range(n):
@@ -48,7 +48,7 @@ def _make_sample_cards(n: int, out_dir: Path) -> list[Path]:
                 card,
                 template_name,
                 out_dir,
-                _IMAGE_CACHE_DIR,
+                IMAGE_CACHE_DIR,
                 card_index=i,
                 visual_identity=vi,
             )

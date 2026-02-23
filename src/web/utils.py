@@ -9,11 +9,10 @@ from typing import Literal
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 
+from lib.constants import IMAGE_CACHE_DIR
 from tools.merge_pdfs import merge_pdfs_to_print
 from tools.pdf_to_pngs import pdf_to_pngs
 from tools.render_template import cards_json_to_pdfs
-
-_IMAGE_CACHE_DIR = Path(__file__).parents[2] / "data" / "image_cache"
 
 
 # ---------------------------------------------------------------------------
@@ -65,7 +64,7 @@ def _do_render(
     card_size: Literal["A6", "A5"],
     key_prefix: str,
 ) -> None:
-    _IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
@@ -80,7 +79,7 @@ def _do_render(
             pdf_paths = cards_json_to_pdfs(
                 cards_json_path,
                 renders_dir,
-                _IMAGE_CACHE_DIR,
+                IMAGE_CACHE_DIR,
             )
             st.write(f"{len(pdf_paths)} cards rendered.")
             st.write("Merging into print sheet…")

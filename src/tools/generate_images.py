@@ -10,10 +10,9 @@ from typing import cast
 import aiohttp
 from runware import IImage, IImageInference, Runware
 
-RUNWARE_MODEL = "runware:101@1"
-_NEGATIVE_PROMPT = "Text, label, diagram, blurry, low quality, distorted"
+from lib.constants import GEMINI_DIAGRAM_MODEL, RUNWARE_MODEL
 
-GEMINI_DIAGRAM_MODEL = "gemini-2.5-flash-image"
+_NEGATIVE_PROMPT = "Text, label, diagram, blurry, low quality, distorted"
 
 # Default image size (height, width) for card illustrations.
 # Landscape-oriented to fit the left/right image slot in card templates.
@@ -99,15 +98,15 @@ def get_image_base64(
 
 
 _ASPECT_RATIOS = [
-    ("1:1",  1.000),
-    ("4:3",  1.333),
-    ("3:2",  1.500),
-    ("5:4",  1.250),
+    ("1:1", 1.000),
+    ("4:3", 1.333),
+    ("3:2", 1.500),
+    ("5:4", 1.250),
     ("16:9", 1.778),
     ("21:9", 2.333),
-    ("2:3",  0.667),
-    ("3:4",  0.750),
-    ("4:5",  0.800),
+    ("2:3", 0.667),
+    ("3:4", 0.750),
+    ("4:5", 0.800),
     ("9:16", 0.563),
 ]
 
@@ -165,7 +164,9 @@ def _generate_diagram_gemini(prompt: str, size: tuple[int, int], cache_dir: Path
     return cache_path
 
 
-def get_diagram_image_base64(prompt: str, images_dir: Path, size: tuple[int, int] = (400, 300)) -> str | None:
+def get_diagram_image_base64(
+    prompt: str, images_dir: Path, size: tuple[int, int] = (400, 300)
+) -> str | None:
     """
     Generate or retrieve a Gemini Flash diagram image as base64-encoded PNG.
 

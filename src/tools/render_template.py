@@ -10,14 +10,13 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from joblib import Parallel, delayed
 from weasyprint import HTML
 
+from lib.constants import TEMPLATES_DIR
 from lib.font_cache import fetch_and_cache_font_awesome, fetch_and_cache_fonts
 from lib.font_metadata import FONT_SPECS
 from lib.models import SectionTheme, VisualIdentity
 from lib.registry import get_all_schema_classes, get_templates_for_schema
 from schemas._base import Schema
 from tools.generate_images import get_diagram_image_base64, get_image_base64
-
-_TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 
 def build_google_fonts_url(
@@ -226,7 +225,7 @@ def render_card_to_pdf(
     font_awesome_css = fetch_and_cache_font_awesome()
 
     env = Environment(
-        loader=FileSystemLoader(str(_TEMPLATES_DIR)),
+        loader=FileSystemLoader(str(TEMPLATES_DIR)),
         autoescape=select_autoescape(["html", "xml"]),
     )
     template = env.get_template(template_name)
@@ -253,7 +252,7 @@ def render_card_to_pdf(
     rendered_html = template.render(**template_vars)
 
     pdf_path = output_dir / f"card-{card_index}.pdf"
-    HTML(string=rendered_html, base_url=str(_TEMPLATES_DIR)).write_pdf(pdf_path)
+    HTML(string=rendered_html, base_url=str(TEMPLATES_DIR)).write_pdf(pdf_path)
     return pdf_path
 
 

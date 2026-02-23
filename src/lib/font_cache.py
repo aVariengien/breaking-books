@@ -5,12 +5,11 @@ import logging
 import re
 import urllib.parse
 import urllib.request
-from pathlib import Path
+
+from lib.constants import FONTS_DIR
 
 logger = logging.getLogger("bb.lib.font_cache")
 
-ROOT = Path(__file__).resolve().parent.parent.parent
-FONTS_DIR = ROOT / "data" / "fonts"
 _REQUEST_HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"}
 _FONT_EXTENSIONS = (".woff2", ".woff", ".ttf", ".otf")
 _URL_PATTERN = re.compile(r"url\s*\(\s*([^)]+)\s*\)")

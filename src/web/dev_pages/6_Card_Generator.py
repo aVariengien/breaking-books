@@ -11,12 +11,13 @@ import streamlit as st
 from cerebras.cloud.sdk import Cerebras
 
 from big_prompt import build_initial_query, build_system_prompt
+from lib.constants import IMAGE_CACHE_DIR, PROJECT_ROOT
 from lib.models import BBGame, Config, WorkDir
 from tools.extract_book_content import extract_book_content
 from tools.generate_images import DEFAULT_SIZE, _generate_image_async
 
-DATA_DIR = Path(__file__).parents[3] / "data"
-IMAGES_CACHE_DIR = Path(__file__).parents[3] / "data" / "image_cache"
+DATA_DIR = PROJECT_ROOT / "data"
+IMAGES_CACHE_DIR = IMAGE_CACHE_DIR
 
 # ---------------------------------------------------------------------------
 # Fast-mode prefix injected before the full agent system prompt.

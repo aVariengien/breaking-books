@@ -5,9 +5,8 @@ import pkgutil
 from pathlib import Path
 
 import schemas as schemas_pkg
+from lib.constants import TEMPLATES_DIR
 from schemas._base import Schema
-
-_TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 
 def get_all_schema_classes() -> list[type[Schema]]:
@@ -30,9 +29,9 @@ def get_all_schema_classes() -> list[type[Schema]]:
 
 def get_all_template_paths() -> list[Path]:
     """Return paths to all Jinja2 templates in src/templates/."""
-    return sorted(_TEMPLATES_DIR.glob("*.html.jinja2"))
+    return sorted(TEMPLATES_DIR.glob("*.html.jinja2"))
 
 
 def get_templates_for_schema(schema_class: type[Schema]) -> list[Path]:
     """Return template paths matching the schema's glob pattern against src/templates/."""
-    return sorted(_TEMPLATES_DIR.glob(schema_class.templates))
+    return sorted(TEMPLATES_DIR.glob(schema_class.templates))
