@@ -474,5 +474,4 @@ def main() -> None:
         st.info("Upload a book file and click **Create** to generate a flashcard deck.")
 
 
-if __name__ == "__main__":
-    main()
+main()

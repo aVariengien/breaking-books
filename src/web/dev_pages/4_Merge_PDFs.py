@@ -1,11 +1,6 @@
-"""Quality test: merge_pdfs_to_print — card PDFs → printable sheet.
+"""Dev: merge_pdfs_to_print — card PDFs → printable sheet.
 
-Renders N sample cards (from schema get_examples(), like Render Templates) and
-merges them into an A4 landscape sheet. Layout: A6 → 4 per page, A5 → 2 per page.
-Portrait cards are rotated to fit when needed.
-
-CLI:      python quality_tests/pages/4_Merge_PDFs.py
-Streamlit: make quality-tests → "Merge PDFs" page
+CLI:      python src/web/dev_pages/4_Merge_PDFs.py
 """
 
 import sys
@@ -15,7 +10,7 @@ from typing import Literal
 
 import streamlit as st
 
-ROOT = Path(__file__).parents[2]
+ROOT = Path(__file__).parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 
 from lib.example_cards import build_example_cards  # noqa: E402

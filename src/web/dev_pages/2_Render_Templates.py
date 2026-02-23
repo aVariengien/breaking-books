@@ -1,20 +1,16 @@
-"""Quality test: render_template — card schema + Jinja2 template → PDF → PNG.
+"""Dev: render_template — card schema + Jinja2 template → PDF → PNG.
 
 Renders one card per schema type × template using hardcoded example data
 and predefined visual identities (no LLM required).
 
-All cards render at A6 size. Image generation uses cached images; otherwise
-cards render with a text placeholder.
-
-CLI:      python quality_tests/pages/2_Render_Templates.py
-Streamlit: make quality-tests → "Render Templates" page
+CLI:      python src/web/dev_pages/2_Render_Templates.py
 """
 
 import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).parents[2]
+ROOT = Path(__file__).parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 
 from lib.example_cards import build_example_cards  # noqa: E402

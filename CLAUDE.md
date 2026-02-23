@@ -10,11 +10,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Run the full pipeline
 uv run --frozen python -m main <input.epub> [--num-cards 15] [--card-size A6] [--resume --output-dir output/...] [--instructions "..."]
 
-# Run the Streamlit UI
-make run                  # src/web.py on port 9201
+# Run the Streamlit UI (dev mode, includes dev pages)
+make dev                  # BB_DEV=1, src/web/app.py on port 9201
 
-# Run quality test dashboard
-make quality-tests        # quality_tests/Home.py on port 9202
+# Run the Streamlit UI (prod mode, prod pages only)
+make run                  # src/web/app.py on port 9201
 
 # Run tests
 make test                 # ty check src/ && ruff check src/ && pytest tests/
@@ -161,12 +161,33 @@ Jinja2 + WeasyPrint HTML templates that render cards to PDF. Each schema class d
 8. **Test without LLM**:
    - Use `uv run pytest tests/test_render_templates.py` (no LLM required)
    - Importantly, this shows any warnings from WeasyPrint. Those should be fixed as they likely correspond to features that are not supported by WeasyPrint.
-   - Streamlit: `make quality-tests` → select "Render Templates" page → choose visual identity style
+   - Streamlit: `make dev` → select "Render Templates" page → choose visual identity style
 
 ### Tests (`tests/`)
 
 Run with `make test`. The command also runs `ty` type-checking and `ruff` linting. Add a quick test when adding new code.
 
-### Quality tests (`quality_tests/`)
+### Web UI (`src/web/`)
 
-Streamlit multi-page app for inspecting individual pipeline steps (extract, render templates, QC, merge PDFs). Run with `make quality-tests`. Individual pages can also be run as CLI scripts for direct inspection.
+Streamlit app with two modes:
+- **Prod** (`make run`): shows `prod_pages/` only — Generator + Render Deck
+- **Dev** (`make dev`, `BB_DEV=1`): also shows `dev_pages/` — pipeline inspection tools (extract, schema docs, render templates, PDF→PNGs, merge PDFs, QC, card generator)
+
+Structure:
+```
+src/web/
+├── app.py              # entrypoint; st.navigation() controls which pages appear
+├── prod_pages/
+│   ├── 1_Generator.py  # main UI: upload book → run agent → view deck
+│   └── 2_Render_Deck.py
+└── dev_pages/
+    ├── 1_Extract.py
+    ├── 2_Build_Schema_Docs.py
+    ├── 2_Render_Templates.py
+    ├── 3_PDF_to_PNGs.py
+    ├── 4_Merge_PDFs.py
+    ├── 5_Quality_Control.py
+    └── 6_Card_Generator.py
+```
+
+Dev pages can also be run as CLI scripts for direct inspection (no Streamlit needed).

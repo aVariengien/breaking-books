@@ -1,16 +1,13 @@
-"""Quality test: pdf_to_pngs — PDF pages → PNG files.
+"""Dev: pdf_to_pngs — PDF pages → PNG files.
 
-Generates a sample card PDF, then converts it to PNG at a selectable DPI.
-
-CLI:      python quality_tests/pages/3_PDF_to_PNGs.py
-Streamlit: make quality-tests → "PDF to PNGs" page
+CLI:      python src/web/dev_pages/3_PDF_to_PNGs.py
 """
 
 import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).parents[2]
+ROOT = Path(__file__).parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 
 from lib.example_cards import build_example_cards  # noqa: E402

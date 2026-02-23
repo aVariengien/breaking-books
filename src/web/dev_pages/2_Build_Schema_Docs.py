@@ -1,13 +1,12 @@
-"""Quality test: build_schema_docs — rendered schema documentation for the agent prompt.
+"""Dev: build_schema_docs — rendered schema documentation for the agent prompt.
 
-CLI:       python quality_tests/pages/2_Build_Schema_Docs.py
-Streamlit: run via `make quality-tests` and open this page in the sidebar.
+CLI:       python src/web/dev_pages/2_Build_Schema_Docs.py
 """
 
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).parents[2]
+ROOT = Path(__file__).parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 
 from big_prompt import build_schema_docs  # noqa: E402

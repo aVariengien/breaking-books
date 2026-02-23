@@ -1,16 +1,14 @@
-"""Quality test: extract_book_content — EPUB → clean HTML.
+"""Dev: extract_book_content — EPUB → clean HTML.
 
-CLI:  python quality_tests/pages/1_Extract_Book_Content.py [epub]
+CLI:  python src/web/dev_pages/1_Extract.py [epub]
       (picks a random EPUB from data/ when no argument is given)
-
-Streamlit: run via `make quality-tests` and open this page in the sidebar.
 """
 
 import random
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).parents[2]
+ROOT = Path(__file__).parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 
 from lib.streamlit_utils import in_streamlit  # noqa: E402

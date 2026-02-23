@@ -1,11 +1,7 @@
-"""Quality test: render a full deck from a cards.json file.
+"""Render a full deck from a cards.json file.
 
 Upload a cards.json, pick card size, render all cards to a merged PDF,
 preview inline, and download PDF or a ZIP of individual card PNGs.
-
-The core component `render_deck_ui` is reusable in the main web UI.
-
-Streamlit: make quality-tests → "Render Deck" page
 """
 
 import io
@@ -15,8 +11,10 @@ import zipfile
 from pathlib import Path
 from typing import Literal
 
-ROOT = Path(__file__).parents[2]
+ROOT = Path(__file__).parents[3]
 sys.path.insert(0, str(ROOT / "src"))
+
+import streamlit as st  # noqa: E402
 
 _IMAGE_CACHE_DIR = ROOT / "data" / "image_cache"
 
@@ -166,34 +164,18 @@ def _build_zip(pairs: list[tuple[str, bytes]]) -> bytes:
 # Page entry point
 # ---------------------------------------------------------------------------
 
+st.set_page_config(layout="wide")
+st.title("Render Deck")
+st.caption("Upload a cards.json → pick card size → render → preview & download")
 
-def run_streamlit() -> None:
-    import streamlit as st
+uploaded = st.file_uploader(
+    "cards.json",
+    type=["json"],
+    key="deck_uploader",
+    label_visibility="collapsed",
+)
 
-    from lib.streamlit_utils import in_streamlit  # noqa: F401 (used below)
-
-    st.set_page_config(layout="wide")
-    st.title("Render Deck")
-    st.caption("Upload a cards.json → pick card size → render → preview & download")
-
-    uploaded = st.file_uploader(
-        "cards.json",
-        type=["json"],
-        key="deck_uploader",
-        label_visibility="collapsed",
-    )
-
-    if uploaded is not None:
-        render_deck_ui(uploaded.read(), key_prefix="qt_deck")
-    else:
-        st.info("Upload a `cards.json` to get started.")
-
-
-# Guard: only run when executed as a Streamlit page
-try:
-    from lib.streamlit_utils import in_streamlit
-
-    if in_streamlit():
-        run_streamlit()
-except ImportError:
-    pass
+if uploaded is not None:
+    render_deck_ui(uploaded.read(), key_prefix="qt_deck")
+else:
+    st.info("Upload a `cards.json` to get started.")

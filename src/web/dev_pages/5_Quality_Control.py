@@ -1,9 +1,7 @@
-"""Quality test: quality_control — cards.json → QC report.
+"""Dev: quality_control — cards.json → QC report.
 
-CLI:  python quality_tests/pages/5_Quality_Control.py [cards.json]
+CLI:  python src/web/dev_pages/5_Quality_Control.py [cards.json]
       (picks a random JSON from data/ when no argument is given)
-
-Streamlit: run via `make quality-tests` and open this page in the sidebar.
 """
 
 import random
@@ -11,7 +9,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).parents[2]
+ROOT = Path(__file__).parents[3]
 sys.path.insert(0, str(ROOT / "src"))
 
 from lib.models import Config, OutDir, WorkDir  # noqa: E402
