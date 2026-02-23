@@ -41,7 +41,10 @@ class Config(BaseModel):
     language: str | None = None  # None → detect from book
     max_qc_calls: int = 3
     user_preferences: str = ""
-    model: Literal["haiku", "sonnet", "opus"] = "haiku"
+    # Yes, str is a supertype of Literal, but this is for clarity:
+    # only haiku, sonnet, and opus work by default, but custom models
+    # can be specified following: https://code.claude.com/docs/en/llm-gateway
+    model: Literal["haiku", "sonnet", "opus"] | str = "haiku"
 
 
 class WorkDir(BaseModel):

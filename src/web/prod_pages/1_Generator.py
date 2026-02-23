@@ -137,8 +137,6 @@ def _render_block(block: dict) -> None:
         label = _tool_label(name, tool_input)
         with st.status(label, state="complete"):
             input_str = json.dumps(tool_input, indent=2, ensure_ascii=False)
-            if len(input_str) > 2000:
-                input_str = input_str[:2000] + "\n..."
             st.code(input_str, language="json")
     elif btype == "tool_result":
         content = block.get("content", "")

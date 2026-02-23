@@ -48,7 +48,6 @@ async def run_agent(
     )
 
     async with ClaudeSDKClient(options=options) as client:
-        print(prompt)
         await client.query(prompt)
         async for message in client.receive_messages():
             yield message
