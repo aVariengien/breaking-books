@@ -12,7 +12,7 @@ from weasyprint import HTML
 
 from lib.font_cache import fetch_and_cache_font_awesome, fetch_and_cache_fonts
 from lib.font_metadata import FONT_SPECS
-from lib.models import Config, SectionTheme, VisualIdentity
+from lib.models import SectionTheme, VisualIdentity
 from lib.registry import get_all_schema_classes, get_templates_for_schema
 from schemas._base import Schema
 from tools.generate_images import get_diagram_image_base64, get_image_base64
@@ -260,7 +260,6 @@ def render_card_to_pdf(
 def cards_json_to_pdfs(
     cards_json_path: Path,
     output_dir: Path,
-    config: Config,
     images_dir: Path,
     *,
     n_jobs: int = -1,

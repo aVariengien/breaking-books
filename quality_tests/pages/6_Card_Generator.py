@@ -257,14 +257,12 @@ def run_streamlit() -> None:
             st.error(f"No supported book files found in `{DATA_DIR}` (epub, html, md)")
             st.stop()
 
-        selected_file: Path = st.selectbox(  # type: ignore[assignment]
-            "Book file", book_files, format_func=lambda p: p.name
-        )
+        selected_file: Path = st.selectbox("Book file", book_files, format_func=lambda p: p.name)
 
         st.divider()
         st.subheader("Card config")
         num_cards: int = st.slider("Target card count", 10, 80, 40, step=5)
-        card_size: str = st.selectbox("Card size", ["A6", "A5"], index=0)  # type: ignore[assignment]
+        card_size: str = st.selectbox("Card size", ["A6", "A5"], index=0)
         language: str = st.text_input("Language", placeholder="Leave blank to match book")
         user_prefs: str = st.text_area(
             "User preferences", placeholder="e.g. Focus on practical examples, avoid jargon"
@@ -352,7 +350,7 @@ def run_streamlit() -> None:
                     stream=True,
                 )
                 for chunk in stream:
-                    delta = chunk.choices[0].delta
+                    delta = chunk.choices[0].delta  # type: ignore[union-attr]
                     if delta and delta.content:
                         full_text += delta.content
                         # Show trailing window so the UI stays responsive

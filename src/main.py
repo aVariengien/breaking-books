@@ -82,9 +82,7 @@ def main(
 
     # --- Step 3: render cards to individual PDFs ---
     logger.info("Rendering cards to PDF…")
-    pdf_paths = cards_json_to_pdfs(
-        work_dir.cards_json, work_dir.renders_dir, config, out_dir.images_dir
-    )
+    pdf_paths = cards_json_to_pdfs(work_dir.cards_json, work_dir.renders_dir, out_dir.images_dir)
 
     # --- Step 4: merge into a printable sheet ---
     logger.info("Merging PDFs…")

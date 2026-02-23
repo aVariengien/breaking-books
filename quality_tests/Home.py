@@ -14,5 +14,6 @@ Use the sidebar to navigate to individual pipeline steps.
 | PDF to PNGs | PDF → PNG conversion used by QC visual review |
 | Merge PDFs | Card PDFs → printable A4 sheet (2-up / 4-up) |
 | Quality Control | cards.json → QC report (structure + section balance + LLM review) |
+| Render Deck | cards.json → merged print PDF + card PNGs download |
 """
 )

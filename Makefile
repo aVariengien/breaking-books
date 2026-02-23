@@ -11,8 +11,8 @@ quality-tests:
 	uv run --frozen streamlit run --server.port $(QUALITY_PORT) quality_tests/Home.py
 
 test:
-	uv run --frozen ty check src/
-	uv run --frozen ruff check src/
+	uv run --frozen ty check
+	uv run --frozen ruff check
 	uv run --frozen pytest tests/
 
 font-metadata:

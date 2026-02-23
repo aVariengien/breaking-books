@@ -11,6 +11,7 @@ Streamlit: make quality-tests → "Merge PDFs" page
 import sys
 import tempfile
 from pathlib import Path
+from typing import Literal
 
 import streamlit as st
 
@@ -84,7 +85,7 @@ def run_cli() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
         pdfs = _make_sample_cards(4, tmp_dir / "cards")
-        for card_size in ["A6", "A5"]:
+        for card_size in ("A6", "A5"):
             out = tmp_dir / f"merged_{card_size}.pdf"
             result = merge_pdfs_to_print(pdfs, out, card_size=card_size)
             layout = "4-up" if card_size == "A6" else "2-up"
@@ -100,7 +101,7 @@ def run_streamlit() -> None:
     )
 
     col1, col2 = st.columns(2)
-    card_size = col1.radio("Card size", ["A6", "A5"], horizontal=True)
+    card_size: Literal["A6", "A5"] = col1.radio("Card size", ["A6", "A5"], horizontal=True)  # type: ignore[assignment]
     n_cards = col2.slider("Cards", min_value=1, max_value=8, value=4)
 
     pdf_bytes_list = _get_cached_sample_card_pdfs(n_cards)
