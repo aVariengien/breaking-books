@@ -4,12 +4,12 @@ import asyncio
 import json
 import random
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import streamlit as st
-from streamlit_pdf_viewer import pdf_viewer
 from claude_agent_sdk import (
     AssistantMessage,
     ResultMessage,
@@ -28,6 +28,29 @@ from lib.models import BBGame, Config, OutDir, WorkDir
 from tools.extract_book_content import load_book
 from tools.merge_pdfs import merge_pdfs_to_print
 from tools.render_template import cards_json_to_pdfs
+from web.utils import deck_viewer
+
+# ------------------------------------------------------------------
+# Constants
+# ------------------------------------------------------------------
+
+_HOW_TO_PLAY = """
+**1. 👋 Welcome & Setup** *(10–15 min)*
+- Gather your group (3–5 people is ideal).
+- Start with a welcome roundup: Why is everyone here? What's your interest in the book?
+- Designate a timekeeper.
+
+**2. 🔄 Playing the Sections** *(the core loop)*
+- Each player chooses a book section they will "guide."
+- The section's guide reads the Section Card aloud.
+- Distribute all cards for that section.
+- Players discuss and place their cards on the table, drawing connections.
+- At the end, the guide tells the section story in **one minute sharp**.
+
+**3. 🏆 The Grand Finale**
+- After all sections, the most courageous person tells the story of the *entire book*.
+- Remember to take a picture of your beautiful creation! ✨
+"""
 
 # ------------------------------------------------------------------
 # Session state defaults
@@ -42,6 +65,10 @@ _DEFAULTS: dict[str, Any] = {
     "messages": [],
     "agent_done": False,
     "pending_instructions": None,
+    # Set to True as soon as Generate is clicked, to hide config on next rerun
+    "generation_started": False,
+    "_pending_file_path": None,
+    "_pending_config": None,
 }
 
 
@@ -112,13 +139,15 @@ def _render_message(msg: dict) -> None:
         duration_s = msg.get("duration_ms", 0) / 1000
         if msg.get("is_error"):
             st.error(
-                f"Agent finished with error — {msg['num_turns']} turns, {cost}, {duration_s:.1f}s"
+                f"Agent finished with error — {msg['num_turns']} turns · {cost} · {duration_s:.1f}s"
             )
         else:
-            st.success(f"Agent done — {msg['num_turns']} turns, {cost}, {duration_s:.1f}s")
+            st.success(f"Done — {msg['num_turns']} turns · {cost} · {duration_s:.1f}s")
     elif kind == "user":
         st.chat_message("user").markdown(msg.get("content", ""))
-    # Skip system and unknown messages
+    elif kind == "system":
+        subtype = msg.get("subtype") or "init"
+        st.info(f"System: {subtype}")
 
 
 def _render_block(block: dict) -> None:
@@ -134,37 +163,61 @@ def _render_block(block: dict) -> None:
     elif btype == "tool_use":
         name = block.get("name", "tool")
         tool_input = block.get("input", {})
-        label = _tool_label(name, tool_input)
-        with st.status(label, state="complete"):
-            input_str = json.dumps(tool_input, indent=2, ensure_ascii=False)
-            st.code(input_str, language="json")
+        with st.expander(_tool_label(name, tool_input), expanded=False):
+            st.code(json.dumps(tool_input, indent=2, ensure_ascii=False), language="json")
     elif btype == "tool_result":
         content = block.get("content", "")
         if block.get("is_error"):
-            st.error(content[:1000] if len(content) > 1000 else content)
+            st.error(content[:2000] if len(content) > 2000 else content)
         elif content.strip():
-            display = content[:1000] + "..." if len(content) > 1000 else content
-            st.caption(display)
+            truncated = content[:3000] + ("\n\n*(truncated)*" if len(content) > 3000 else "")
+            with st.container(border=True):
+                st.markdown(truncated)
 
 
 def _tool_label(name: str, tool_input: dict) -> str:
-    """Build a human-readable label for a tool use status widget."""
+    """Human-readable label for a tool use expander."""
     if name == "Write":
-        return f"Write → {tool_input.get('file_path', '?')}"
+        return f"✏️ Write → {Path(tool_input.get('file_path', '?')).name}"
     if name == "Edit":
-        return f"Edit → {tool_input.get('file_path', '?')}"
+        return f"✏️ Edit → {Path(tool_input.get('file_path', '?')).name}"
     if name == "Read":
-        return f"Read → {tool_input.get('file_path', '?')}"
+        return f"📖 Read → {Path(tool_input.get('file_path', '?')).name}"
     if name == "Glob":
-        return f"Glob → {tool_input.get('pattern', '?')}"
+        return f"🔍 Glob → {tool_input.get('pattern', '?')}"
+    if name == "mcp__bb__quality_control":
+        return "✅ Quality Control"
+    return f"🔧 {name}"
+
+
+def _tool_label_plain(name: str, tool_input: dict) -> str:
+    """Label without emoji, suitable for the status widget header."""
+    if name == "Write":
+        return f"Write {Path(tool_input.get('file_path', '?')).name}"
+    if name == "Edit":
+        return f"Edit {Path(tool_input.get('file_path', '?')).name}"
+    if name == "Read":
+        return f"Read {Path(tool_input.get('file_path', '?')).name}"
+    if name == "Glob":
+        return f"Glob {tool_input.get('pattern', '?')}"
     if name == "mcp__bb__quality_control":
         return "Quality Control"
-    return f"Tool: {name}"
+    return name
 
 
 # ------------------------------------------------------------------
 # Agent streaming
 # ------------------------------------------------------------------
+
+
+def _result_summary(messages: list[dict]) -> str:
+    """Extract the cost/turn/duration summary from a result message."""
+    result = next((m for m in reversed(messages) if m.get("kind") == "result"), None)
+    if not result:
+        return ""
+    cost = f"${result['total_cost_usd']:.4f}" if result.get("total_cost_usd") else "N/A"
+    dur = result.get("duration_ms", 0) / 1000
+    return f"{result['num_turns']} turns · {cost} · {dur:.0f}s"
 
 
 def _stream_agent(
@@ -176,29 +229,54 @@ def _stream_agent(
     resume: bool = False,
     instructions: str = "",
 ) -> list[dict]:
-    """Run the agent synchronously, streaming messages to the Streamlit UI.
-
-    Returns the list of serialized messages produced during this run.
-    """
-    st.info(
-        "Agent resuming…"
-        if resume
-        else "Agent running… this may take a few minutes. Do not refresh the page."
-    )
-    container = st.container()
+    """Run the agent, streaming all messages inside a single st.status() container."""
     new_messages: list[dict] = []
+    last_action_t: list[float] = [time.monotonic()]
 
-    async def _run() -> None:
-        async for message in run_agent(
-            book_html, config, work_dir, out_dir, resume=resume, instructions=instructions
-        ):
-            log.log_message(message)
-            serialized = _serialize_message(message)
-            new_messages.append(serialized)
-            with container:
+    with st.status(
+        "Resuming…" if resume else "Generating your deck…",
+        expanded=True,
+    ) as status:
+
+        async def _run() -> None:
+            async for message in run_agent(
+                book_html, config, work_dir, out_dir, resume=resume, instructions=instructions
+            ):
+                log.log_message(message)
+                serialized = _serialize_message(message)
+                new_messages.append(serialized)
+
+                # Update the status label to reflect what's happening right now
+                kind = serialized.get("kind")
+                if kind == "assistant":
+                    for block in serialized.get("blocks", []):
+                        btype = block.get("type")
+                        elapsed = time.monotonic() - last_action_t[0]
+                        if btype == "thinking":
+                            status.update(label=f"Thinking… ({elapsed:.0f}s)")
+                        elif btype == "tool_use":
+                            plain = _tool_label_plain(block.get("name", ""), block.get("input", {}))
+                            status.update(label=f"Thought {elapsed:.0f}s → {plain}")
+                        elif btype == "tool_result":
+                            status.update(label=f"Tool returned ({elapsed:.0f}s)")
+                        elif btype == "text":
+                            status.update(label="Writing…")
+                        last_action_t[0] = time.monotonic()
+                elif kind == "system":
+                    status.update(label="Starting…")
+
                 _render_message(serialized)
 
-    asyncio.run(_run())
+        asyncio.run(_run())
+
+        is_error = any(m.get("is_error") for m in new_messages if m.get("kind") == "result")
+        summary = _result_summary(new_messages)
+        status.update(
+            label=f"Generation failed — {summary}" if is_error else f"Agent log — {summary}",
+            state="error" if is_error else "complete",
+            expanded=False,
+        )
+
     return new_messages
 
 
@@ -226,6 +304,11 @@ def _next_deck_path(out_dir: OutDir) -> Path:
 # Results display
 # ------------------------------------------------------------------
 
+_BADGE_STYLE = (
+    "background:#e2e8f0;color:#2d3748;padding:2px 10px;border-radius:999px;"
+    "font-size:0.8em;font-family:monospace;display:inline-block;margin:2px 2px;"
+)
+
 
 def _show_results(
     work_dir: WorkDir,
@@ -234,11 +317,7 @@ def _show_results(
     *,
     new_version: bool = False,
 ) -> None:
-    """Load BBGame from cards.json and display the deck + QC reports.
-
-    new_version=True: re-render card PDFs and save a new deck-vNNN.pdf.
-    new_version=False: use whatever already exists; render only if nothing is there yet.
-    """
+    """Load BBGame from cards.json and display metrics + deck viewer."""
     cards_path = work_dir.cards_json
     if not cards_path.exists():
         st.warning("No cards.json found yet.")
@@ -262,8 +341,15 @@ def _show_results(
     col1.metric("Cards", len(game.cards))
     col2.metric("Sections", len(game.visual_identity.section_themes))
     col3.metric("Types", len(card_types))
+
+    # Card type badges, sorted by count descending
     if card_types:
-        st.caption("  ".join(f"`{t}` ×{n}" for t, n in sorted(card_types.items())))
+        sorted_types = sorted(card_types.items(), key=lambda x: -x[1])
+        badges = "".join(
+            f'<span style="{_BADGE_STYLE}">{t}&nbsp;&nbsp;<b>{n}</b></span>'
+            for t, n in sorted_types
+        )
+        st.markdown(badges, unsafe_allow_html=True)
 
     # Render card PDFs when needed
     renders_dir = work_dir.renders_dir
@@ -282,45 +368,14 @@ def _show_results(
             merge_pdfs_to_print(existing_card_pdfs, deck_path, card_size=config.card_size)
         versions = _deck_versions(out_dir)
 
-    # cards.json download (always available)
-    st.download_button(
-        "⬇ Download cards.json",
-        cards_path.read_bytes(),
-        file_name="cards.json",
-        mime="application/json",
-        key="dl_cards_json",
+    # Deck viewer: version selector + PDF download + JSON download + PDF preview
+    # Card images ZIP is offered via deck_viewer when card PDFs are available
+    deck_viewer(
+        versions,
+        cards_json_path=cards_path,
+        card_pdfs=existing_card_pdfs if existing_card_pdfs else None,
+        key_prefix="gen",
     )
-
-    # Version selector + inline viewer
-    if versions:
-        # Newest first; label the latest one
-        options = list(reversed(versions))
-        labels = [f"{p.name} (latest)" if i == 0 else p.name for i, p in enumerate(options)]
-        label_to_path = dict(zip(labels, options))
-
-        selected_label = st.selectbox("Deck version", labels, index=0)
-        selected_path = label_to_path[selected_label]
-
-        dl_col, _ = st.columns([1, 3])
-        with dl_col:
-            st.download_button(
-                f"⬇ Download {selected_path.name}",
-                selected_path.read_bytes(),
-                file_name=selected_path.name,
-                mime="application/pdf",
-                key=f"dl_{selected_path.name}",
-            )
-
-        pdf_viewer(str(selected_path), annotations=[])
-
-    # QC reports
-    qc_reports = sorted(out_dir.root.glob("qc-report-v*.md"))
-    if qc_reports:
-        with st.expander(f"QC Reports ({len(qc_reports)})", expanded=False):
-            for report_path in reversed(qc_reports):
-                st.markdown(f"**{report_path.name}**")
-                st.markdown(report_path.read_text(encoding="utf-8"))
-                st.divider()
 
 
 # ------------------------------------------------------------------
@@ -328,21 +383,68 @@ def _show_results(
 # ------------------------------------------------------------------
 
 
-def _sidebar() -> tuple[Any, int, str, str, str | None, int, str]:
-    """Render sidebar config widgets."""
+def _sidebar() -> None:
+    """Render the sidebar: about, how to play, and new-book reset at the bottom."""
     with st.sidebar:
         st.title("Breaking Books")
-        uploaded_file = st.file_uploader(
-            "Book file", type=["epub", "html", "htm", "md", "markdown"]
+        st.markdown(
+            "Turn any non-fiction book into a printable flashcard deck. "
+            "An AI agent reads the book, designs the cards, and iterates until they're good."
         )
+
+        st.header("How to Play")
+        st.markdown(_HOW_TO_PLAY)
+
+        # New book button pinned to the bottom of the sidebar (after all other content)
+        if st.session_state.get("generation_started"):
+            st.divider()
+            if st.button("New book", use_container_width=True):
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
+
+
+# ------------------------------------------------------------------
+# Config section (main area)
+# ------------------------------------------------------------------
+
+
+def _config_section() -> tuple[Any, int, str, str, str | None, int, str]:
+    """Render config widgets. Returns (uploaded_file, num_cards, card_size, model, language, max_qc_calls, preferences)."""
+    uploaded_file = st.file_uploader(
+        "Upload a book",
+        type=["epub", "html", "htm", "md", "markdown"],
+        label_visibility="collapsed",
+    )
+    if uploaded_file:
+        st.caption(f"**{uploaded_file.name}** — {uploaded_file.size:,} bytes")
+
+    col1, col2 = st.columns(2)
+    with col1:
         num_cards = st.slider("Number of cards", 5, 80, 15)
-        card_size = st.selectbox("Card size", ["A6", "A5"], index=0)
         model = st.selectbox("Model", ["haiku", "sonnet", "opus"], index=0)
-        language = st.text_input("Language (optional)", placeholder="e.g. English, Spanish")
-        max_qc_calls = st.slider("Max QC iterations", 1, 5, 3)
-        user_preferences = st.text_area(
-            "Preferences", placeholder="Any instructions for the agent..."
+        max_qc_calls = st.slider(
+            "Quality review rounds",
+            1,
+            5,
+            3,
+            help="How many times the AI reviews and improves the cards before finishing.",
         )
+    with col2:
+        card_size = st.selectbox(
+            "Card size",
+            ["A6", "A5"],
+            index=0,
+            help="A6 → 4 cards per A4 sheet · A5 → 2 cards per A4 sheet",
+        )
+        language = st.text_input("Language (optional)", placeholder="e.g. English, Spanish")
+
+    user_preferences = st.text_area(
+        "Preferences (optional)",
+        placeholder="Any instructions for the agent…",
+        height=80,
+    )
+
     return (
         uploaded_file,
         num_cards,
@@ -361,12 +463,14 @@ def _sidebar() -> tuple[Any, int, str, str, str | None, int, str]:
 
 def main() -> None:
     _init_state()
+    _sidebar()
 
-    uploaded_file, num_cards, card_size, model, language, max_qc_calls, user_preferences = (
-        _sidebar()
+    st.title("📚 Breaking Books")
+    st.markdown(
+        "Welcome! This tool turns any non-fiction book into a collaborative, hands-on learning game."
     )
 
-    # --- Handle follow-up instructions from chat_input ---
+    # --- Handle follow-up instructions ---
     pending = st.session_state.get("pending_instructions")
     if pending and st.session_state["agent_done"]:
         st.session_state["pending_instructions"] = None
@@ -375,14 +479,14 @@ def main() -> None:
         out_dir: OutDir = st.session_state["out_dir"]
         log.setup(out_dir.log_path)
 
-        # Clear stale card renders so they get regenerated from the updated cards.
-        # Versioned deck PDFs in out_dir are kept.
         for old_pdf in work_dir.renders_dir.glob("card-*.pdf"):
             old_pdf.unlink()
 
-        # Replay previous messages
-        for msg in st.session_state["messages"]:
-            _render_message(msg)
+        # Show previous run log collapsed
+        prev_summary = _result_summary(st.session_state["messages"])
+        with st.status(f"Previous run — {prev_summary}", state="complete", expanded=False):
+            for msg in st.session_state["messages"]:
+                _render_message(msg)
 
         st.chat_message("user").markdown(pending)
 
@@ -398,34 +502,55 @@ def main() -> None:
 
         _show_results(work_dir, out_dir, config, new_version=True)
 
-        if follow_up := st.chat_input("Follow-up instructions..."):
+        if follow_up := st.chat_input("Follow-up instructions…"):
             st.session_state["pending_instructions"] = follow_up
             st.rerun()
         return
 
-    # --- "Create" button flow ---
-    create_clicked = st.sidebar.button("Create", type="primary", disabled=uploaded_file is None)
+    # --- Config (only shown before generation starts) ---
+    if not st.session_state["generation_started"]:
+        uploaded_file, num_cards, card_size, model, language, max_qc_calls, user_preferences = (
+            _config_section()
+        )
 
-    if create_clicked and uploaded_file is not None:
-        suffix = Path(uploaded_file.name).suffix
-        tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-        tmp_file.write(uploaded_file.read())
-        tmp_file.close()
-        st.session_state["uploaded_path"] = Path(tmp_file.name)
+        if st.button(
+            "Generate deck",
+            type="primary",
+            use_container_width=True,
+            disabled=uploaded_file is None,
+        ):
+            # Save file to a temp path that survives the rerun
+            suffix = Path(uploaded_file.name).suffix
+            tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+            tmp_file.write(uploaded_file.read())
+            tmp_file.close()
+
+            st.session_state["_pending_file_path"] = Path(tmp_file.name)
+            st.session_state["_pending_config"] = {
+                "num_cards": num_cards,
+                "card_size": card_size,
+                "model": model,
+                "language": language,
+                "max_qc_calls": max_qc_calls,
+                "user_preferences": user_preferences,
+            }
+            st.session_state["generation_started"] = True
+            st.session_state["messages"] = []
+            st.session_state["agent_done"] = False
+            st.rerun()  # hides config, then runs agent on the next render
+        return
+
+    # --- Run agent (first rerun after Generate is clicked, before messages exist) ---
+    if not st.session_state["messages"] and not st.session_state["agent_done"]:
+        pending_file: Path = st.session_state["_pending_file_path"]
+        pending_cfg: dict = st.session_state["_pending_config"]
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         random_suffix = random.randint(1000, 9999)
-        slug = slugify(Path(uploaded_file.name).stem) or "output"
+        slug = slugify(pending_file.stem) or "output"
         output_dir = Path("output") / f"{timestamp}_{random_suffix}_{slug}"
 
-        config = Config(
-            num_cards=num_cards,
-            card_size=card_size,  # type: ignore[arg-type]
-            model=model,  # type: ignore[arg-type]
-            language=language,
-            max_qc_calls=max_qc_calls,
-            user_preferences=user_preferences,
-        )
+        config = Config(**pending_cfg)
         work_dir = WorkDir.create(output_dir / "tmp")
         out_dir = OutDir.create(output_dir / "out")
         log.setup(out_dir.log_path)
@@ -433,11 +558,9 @@ def main() -> None:
         st.session_state["config"] = config
         st.session_state["work_dir"] = work_dir
         st.session_state["out_dir"] = out_dir
-        st.session_state["messages"] = []
-        st.session_state["agent_done"] = False
 
-        with st.spinner("Loading book..."):
-            book_html = load_book(st.session_state["uploaded_path"])
+        with st.spinner("Loading book…"):
+            book_html = load_book(pending_file)
             out_dir.book_html_path.write_text(book_html, encoding="utf-8")
             st.session_state["book_html"] = book_html
 
@@ -447,15 +570,21 @@ def main() -> None:
 
         _show_results(work_dir, out_dir, config)
 
-        if follow_up := st.chat_input("Follow-up instructions..."):
+        if follow_up := st.chat_input("Follow-up instructions…"):
             st.session_state["pending_instructions"] = follow_up
             st.rerun()
         return
 
-    # --- Replay stored messages on rerun (no agent running) ---
+    # --- Replay stored messages on page rerun ---
     if st.session_state["messages"]:
-        for msg in st.session_state["messages"]:
-            _render_message(msg)
+        prev_summary = _result_summary(st.session_state["messages"])
+        with st.status(
+            f"Agent log — {prev_summary}",
+            state="complete",
+            expanded=False,
+        ):
+            for msg in st.session_state["messages"]:
+                _render_message(msg)
 
         if st.session_state["agent_done"]:
             _show_results(
@@ -463,11 +592,9 @@ def main() -> None:
                 st.session_state["out_dir"],
                 st.session_state["config"],
             )
-            if follow_up := st.chat_input("Follow-up instructions..."):
+            if follow_up := st.chat_input("Follow-up instructions…"):
                 st.session_state["pending_instructions"] = follow_up
                 st.rerun()
-    else:
-        st.info("Upload a book file and click **Create** to generate a flashcard deck.")
 
 
 main()

@@ -16,8 +16,115 @@ from tools.render_template import cards_json_to_pdfs
 
 
 # ---------------------------------------------------------------------------
+# Shared download-row + PDF viewer helper
+# ---------------------------------------------------------------------------
+
+
+def _download_row_and_viewer(
+    pdf_bytes: bytes,
+    pdf_filename: str,
+    secondary: list[tuple[str, bytes, str, str]],  # (label, data, filename, mime)
+    key_prefix: str,
+) -> None:
+    """Primary PDF download button (wide) + secondary buttons (narrow) + inline viewer."""
+    if secondary:
+        cols = st.columns([3] + [1] * len(secondary))
+        pdf_col, *sec_cols = cols
+    else:
+        pdf_col = st.container()
+        sec_cols = []
+
+    with pdf_col:
+        st.download_button(
+            f"⬇ {pdf_filename}",
+            data=pdf_bytes,
+            file_name=pdf_filename,
+            mime="application/pdf",
+            type="primary",
+            use_container_width=True,
+            key=f"{key_prefix}_dl_primary",
+        )
+
+    for col, (label, data, fname, mime) in zip(sec_cols, secondary):
+        with col:
+            st.download_button(
+                label,
+                data=data,
+                file_name=fname,
+                mime=mime,
+                use_container_width=True,
+                key=f"{key_prefix}_dl_{fname}",
+            )
+
+    pdf_viewer(pdf_bytes, key=f"{key_prefix}_viewer")
+
+
+# ---------------------------------------------------------------------------
 # Render Deck component
 # ---------------------------------------------------------------------------
+
+
+def deck_viewer(
+    versions: list[Path],
+    *,
+    cards_json_path: Path | None = None,
+    card_pdfs: list[Path] | None = None,
+    key_prefix: str = "deck",
+) -> None:
+    """
+    Display versioned deck PDFs with a version selector, download buttons, and inline viewer.
+
+    `versions` should be a list of deck PDF paths sorted oldest→newest.
+    `cards_json_path` adds a secondary download button for the raw JSON.
+    `card_pdfs` adds a card-images ZIP download (generated on demand, cached in session state).
+    """
+    if not versions:
+        st.info("No deck available yet.")
+        return
+
+    # Newest first
+    options = list(reversed(versions))
+    labels = [f"{p.name} (latest)" if i == 0 else p.name for i, p in enumerate(options)]
+
+    if len(options) > 1:
+        selected_label = st.selectbox("Version", labels, index=0, key=f"{key_prefix}_version_sel")
+        selected_path = dict(zip(labels, options))[selected_label]
+    else:
+        selected_path = options[0]
+
+    # Build secondary button list
+    secondary: list[tuple[str, bytes, str, str]] = []
+    if cards_json_path and cards_json_path.exists():
+        secondary.append(
+            ("⬇ cards.json", cards_json_path.read_bytes(), "cards.json", "application/json")
+        )
+
+    zip_key = f"{key_prefix}_card_zip"
+    if card_pdfs and zip_key in st.session_state:
+        secondary.append(
+            (
+                "⬇ Card images",
+                st.session_state[zip_key],
+                "card-images.zip",
+                "application/zip",
+            )
+        )
+
+    _download_row_and_viewer(selected_path.read_bytes(), selected_path.name, secondary, key_prefix)
+
+    # Card images ZIP generation button (shown until ZIP is ready)
+    if card_pdfs and zip_key not in st.session_state:
+        if st.button("Generate card images (ZIP)", key=f"{zip_key}_gen"):
+            with st.spinner("Converting cards to images…"):
+                st.session_state[zip_key] = make_card_images_zip(card_pdfs)
+            st.rerun()
+
+
+def make_card_images_zip(card_pdfs: list[Path], *, dpi: int = 150) -> bytes:
+    """Convert a list of card PDFs to PNG images and return a ZIP archive."""
+    with tempfile.TemporaryDirectory() as tmp:
+        pairs = _card_pdfs_to_pngs(card_pdfs, Path(tmp) / "pngs", dpi=dpi)
+        return _build_zip(pairs)
 
 
 def render_deck_ui(
@@ -90,27 +197,12 @@ def _do_render(
         card_png_pairs = _card_pdfs_to_pngs(pdf_paths, tmp_dir / "card_pngs")
 
     st.divider()
-
-    dl_col1, dl_col2 = st.columns(2)
-    with dl_col1:
-        st.download_button(
-            "Download PDF",
-            data=merged_pdf_bytes,
-            file_name="deck.pdf",
-            mime="application/pdf",
-            type="primary",
-            key=f"{key_prefix}_dl_pdf",
-        )
-    with dl_col2:
-        st.download_button(
-            "Download card PNGs (ZIP)",
-            data=_build_zip(card_png_pairs),
-            file_name="deck_cards.zip",
-            mime="application/zip",
-            key=f"{key_prefix}_dl_zip",
-        )
-
-    pdf_viewer(merged_pdf_bytes, key=f"{key_prefix}_viewer")
+    _download_row_and_viewer(
+        merged_pdf_bytes,
+        "deck.pdf",
+        [("⬇ PNGs (ZIP)", _build_zip(card_png_pairs), "deck_cards.zip", "application/zip")],
+        key_prefix,
+    )
 
 
 def _card_pdfs_to_pngs(
