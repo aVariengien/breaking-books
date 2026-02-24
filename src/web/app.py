@@ -19,7 +19,6 @@ dev_pages = [
     st.Page("dev_pages/1_Extract.py", title="Extract Book Content", icon="🔍"),
     st.Page("dev_pages/2_Build_Schema_Docs.py", title="Build Schema Docs", icon="📄"),
     st.Page("dev_pages/2_Render_Templates.py", title="Render Templates", icon="🎨"),
-    st.Page("dev_pages/3_PDF_to_PNGs.py", title="PDF to PNGs", icon="🖼️"),
     st.Page("dev_pages/4_Merge_PDFs.py", title="Merge PDFs", icon="📎"),
     st.Page("dev_pages/5_Quality_Control.py", title="Quality Control", icon="✅"),
     st.Page("dev_pages/6_Card_Generator.py", title="Card Generator", icon="⚡"),
