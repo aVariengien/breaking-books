@@ -290,8 +290,6 @@ def _config_section() -> tuple[Any, int, str, str, str | None, int, str]:
         type=["epub", "html", "htm", "md", "markdown"],
         label_visibility="collapsed",
     )
-    if uploaded_file:
-        st.caption(f"**{uploaded_file.name}** — {uploaded_file.size:,} bytes")
 
     col1, col2 = st.columns(2)
     with col1:

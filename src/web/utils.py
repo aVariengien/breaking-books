@@ -153,6 +153,9 @@ def _render_block(block: dict, tool_names: dict[str, str] | None = None) -> None
             st.error(content)
         elif content.strip():
             _render_tool_result_content(content, tool_name)
+    else:
+        st.write(f"Unknown block type: {btype}")
+        st.code(json.dumps(block, indent=2, ensure_ascii=False), language="json")
 
 
 def render_message(msg: dict, tool_names: dict[str, str] | None = None) -> None:

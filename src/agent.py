@@ -40,11 +40,13 @@ async def run_agent(
     options = ClaudeAgentOptions(
         system_prompt=build_system_prompt(config, work_dir),
         mcp_servers={"bb": _make_agent_tools(work_dir, config, out_dir)},
-        allowed_tools=["Read", "Write", "Edit", "Glob", "mcp__bb__quality_control"],
+        allowed_tools=["Read", "Write", "Edit", "Grep", "mcp__bb__quality_control"],
+        tools=["Read", "Write", "Edit", "Grep", "mcp__bb__quality_control"],
         permission_mode="acceptEdits",
         cwd=str(work_dir.root),
         resume=session_id,
         model=config.model,
+        # max_thinking_tokens=2000, # TODO: we might need to set this lower. Sonnet sometimes errors after 32k thinking tokens.
     )
 
     async with ClaudeSDKClient(options=options) as client:
