@@ -5,7 +5,10 @@ from typing import Literal
 
 from pypdf import PdfReader, PdfWriter, Transformation
 
-# A4 landscape dimensions in PDF points (1 pt = 1/72 inch)
+# A4 dimensions in PDF points (1 pt = 1/72 inch)
+_A4_PORTRAIT_W = 595.276
+_A4_PORTRAIT_H = 841.890
+# A4 landscape (used by 2-up layout)
 _A4_W = 841.890
 _A4_H = 595.276
 
@@ -88,10 +91,10 @@ def _layout_2up(writer: PdfWriter, pdf_paths: list[Path]) -> None:
 
 
 def _layout_4up(writer: PdfWriter, pdf_paths: list[Path]) -> None:
-    """Four cards per page (2×2). Portrait cards are rotated to landscape to fit."""
+    """Four cards per page (2×2) on A4 portrait. Portrait A6 cards fit without rotation."""
     cards_per_page = 4
-    slot_w = (_A4_W - _GAP) / 2
-    slot_h = (_A4_H - _GAP) / 2
+    slot_w = (_A4_PORTRAIT_W - _GAP) / 2
+    slot_h = (_A4_PORTRAIT_H - _GAP) / 2
 
     positions = [
         (0, 1),  # top-left
@@ -101,13 +104,14 @@ def _layout_4up(writer: PdfWriter, pdf_paths: list[Path]) -> None:
     ]
 
     for i in range(0, len(pdf_paths), cards_per_page):
-        sheet = writer.add_blank_page(width=_A4_W, height=_A4_H)
+        sheet = writer.add_blank_page(width=_A4_PORTRAIT_W, height=_A4_PORTRAIT_H)
         for j, pdf_path in enumerate(pdf_paths[i : i + cards_per_page]):
             p = _read_first_page(pdf_path)
             if not p:
                 continue
             w, h = _get_page_size(p)
-            rotate = _is_portrait(w, h)
+            # Landscape cards are rotated to fit portrait slots; portrait cards stay as-is
+            rotate = not _is_portrait(w, h)
             if rotate:
                 eff_w, eff_h = h, w
             else:
@@ -120,8 +124,6 @@ def _layout_4up(writer: PdfWriter, pdf_paths: list[Path]) -> None:
 
             if rotate:
                 # Rotate around page center so content stays in predictable coordinates
-                # (v1 used A5 landscape and didn't need rotation; we follow the
-                # rotate-around-center pattern for portrait A6 cards)
                 slot_left = col * (slot_w + _GAP)
                 slot_bottom = row * (slot_h + _GAP)
                 cx = slot_left + slot_w / 2
