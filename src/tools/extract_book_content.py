@@ -73,6 +73,9 @@ def clean_html(html: str) -> str:
     html = _normalize_img_tag_whitespace(html)
     html = _remove_noisy_attributes(html)
     html = _remove_style_tags(html)
+    html = _remove_noisy_tags_keeping_content(html)
+    html = _remove_noisy_tags_keeping_content(html)
+    html = _remove_noisy_tags_keeping_content(html)
     # Three times for nested tags
     html = _remove_empty_tags(html)
     html = _remove_empty_tags(html)
@@ -96,7 +99,7 @@ def _normalize_img_tag_whitespace(html: str) -> str:
 
 
 def _remove_empty_tags(html: str) -> str:
-    return re.sub(r"<[^>]*>\s*</[^>]*>", "", html, flags=re.IGNORECASE)
+    return re.sub(r"<[^>/]*>\s*</[^>]*>", "", html, flags=re.IGNORECASE)
 
 
 def _remove_noisy_attributes(html: str) -> str:
@@ -105,6 +108,10 @@ def _remove_noisy_attributes(html: str) -> str:
 
 def _remove_style_tags(html: str) -> str:
     return re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.IGNORECASE | re.DOTALL)
+
+
+def _remove_noisy_tags_keeping_content(html: str) -> str:
+    return re.sub(r"<(p|div|a|span)>(.*?)</\1>", r"\2", html, flags=re.IGNORECASE | re.DOTALL)
 
 
 if __name__ == "__main__":
