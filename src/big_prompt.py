@@ -61,10 +61,16 @@ The absolute path to cards.json is: `{cards_json_path}`
       ... // BookCard fields — always first
     }},
     {{
-      "type": "<card-type>",
+      "type": "section",
       "section": 0,
+      "title": "Section 1: ...",
+      ... // other section card fields
+    }},
+    {{
+      "type": "<card-type>",
       ... // other card fields
-    }}
+    }},
+    ... // more cards
   ]
 }}
 ```
