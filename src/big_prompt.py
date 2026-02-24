@@ -190,7 +190,7 @@ Apply the same discipline as good frontend design. Commit fully to a vision:
 
 #### Google Fonts Typography Index
 
-*Available fonts are from Google font. Here is a guide to pick it. Each entry: best use (Body / Title / Both / Display / Mono) \+ feel.*
+*Available fonts are from Google font. Here is a guide to pick it. Each entry: best use (Body / Title / Both / Display / Mono) + feel.*
 
 Body-safe \= works at small sizes for sustained reading. Title \= headline/display use only. Display \= decorative, short text only.
 
@@ -290,7 +290,7 @@ Code, terminals, data, typewriter aesthetics.
 
 - **JetBrains Mono** — Mono. Developer-optimized with excellent ligatures. Gold standard for code editors.
 - **Fira Code** — Mono. Excellent ligatures. Strong developer community. Technical and clean.
-- **Space Mono** — Mono. Geometric monospace with personality. Good for code \+ editorial crossover.
+- **Space Mono** — Mono. Geometric monospace with personality. Good for code + editorial crossover.
 - **IBM Plex Mono** — Mono. Corporate-precise. Good for fintech dashboards and data display.
 - **Inconsolata** — Mono. Clean and elegant. Less aggressive than typical mono. Good for light UIs.
 - **Source Code Pro** — Mono. Adobe's code font. Clean and reliable. Works at many sizes.
@@ -338,8 +338,8 @@ For accents, signatures, and warmth. Never for body copy.
 | Syne | Inter | Tech / avant-garde |
 | Space Grotesk | Space Mono | Developer / hacker |
 | Bricolage Grotesque | Source Serif 4 | Strong brand editorial |
-| Josefin Sans | Lato | Clean geometric \+ warmth |
-| Montserrat | Libre Baskerville | Bold marketing \+ authority |
+| Josefin Sans | Lato | Clean geometric + warmth |
+| Montserrat | Libre Baskerville | Bold marketing + authority |
 | IBM Plex Sans | IBM Plex Mono | Developer documentation |
 | Raleway | Karla | Elegant and minimal |
 | Oswald | Open Sans | News and media |
@@ -406,7 +406,7 @@ Pick a style that fits the emotional tone of the idea and the section. Vary styl
 
 Used as backgrounds for text-heavy cards (LongQuote, Question, Definition). Text sits on top — the texture must never compete with it. These are prompt descriptions sent to an image generation model, so be precise and literal.
 
-**The formula:** a light paper ground \+ a fine repeated pattern drawn in the section's accent color, at low opacity. Think WhatsApp wallpaper or hero patterns — enough visual presence to feel designed, quiet enough to disappear once text is laid over.
+**The formula:** a light paper ground + a fine repeated pattern drawn in the section's accent color, at low opacity. Think WhatsApp wallpaper or hero patterns — enough visual presence to feel designed, quiet enough to disappear once text is laid over.
 
 Two approaches:
 
