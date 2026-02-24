@@ -1,7 +1,9 @@
 """Streamlit UI for Breaking Books v2."""
 
 import asyncio
+import dataclasses
 import json
+import os
 import random
 import tempfile
 import time
@@ -10,16 +12,6 @@ from pathlib import Path
 from typing import Any
 
 import streamlit as st
-from claude_agent_sdk import (
-    AssistantMessage,
-    ResultMessage,
-    SystemMessage,
-    TextBlock,
-    ThinkingBlock,
-    ToolResultBlock,
-    ToolUseBlock,
-    UserMessage,
-)
 from slugify import slugify
 
 from agent import run_agent
@@ -28,7 +20,7 @@ from lib.models import BBGame, Config, OutDir, WorkDir
 from tools.extract_book_content import load_book
 from tools.merge_pdfs import merge_pdfs_to_print
 from tools.render_template import cards_json_to_pdfs
-from web.utils import deck_viewer
+from web.utils import deck_viewer, render_agent_log, render_message
 
 # ------------------------------------------------------------------
 # Constants
@@ -79,115 +71,30 @@ def _init_state() -> None:
 
 
 # ------------------------------------------------------------------
-# Message serialization / display
+# Message serialization
 # ------------------------------------------------------------------
 
 
 def _serialize_message(message: Any) -> dict:
-    """Convert an SDK message to a JSON-serializable dict for session_state storage."""
-    if isinstance(message, AssistantMessage):
-        blocks = []
-        for block in message.content:
-            if isinstance(block, TextBlock):
-                blocks.append({"type": "text", "text": block.text})
-            elif isinstance(block, ThinkingBlock):
-                blocks.append({"type": "thinking", "thinking": block.thinking})
-            elif isinstance(block, ToolUseBlock):
-                blocks.append(
-                    {"type": "tool_use", "id": block.id, "name": block.name, "input": block.input}
-                )
-            elif isinstance(block, ToolResultBlock):
-                content = block.content
-                if isinstance(content, list):
-                    content = "\n".join(
-                        c.get("text", repr(c)) if isinstance(c, dict) else repr(c) for c in content
-                    )
-                blocks.append(
-                    {
-                        "type": "tool_result",
-                        "tool_use_id": block.tool_use_id,
-                        "content": str(content or ""),
-                        "is_error": block.is_error or False,
-                    }
-                )
-        return {"kind": "assistant", "blocks": blocks}
-    elif isinstance(message, ResultMessage):
-        return {
-            "kind": "result",
-            "num_turns": message.num_turns,
-            "total_cost_usd": message.total_cost_usd,
-            "session_id": message.session_id,
-            "is_error": message.is_error,
-            "duration_ms": message.duration_ms,
-        }
-    elif isinstance(message, UserMessage):
-        content = message.content if isinstance(message.content, str) else repr(message.content)
-        return {"kind": "user", "content": content}
-    elif isinstance(message, SystemMessage):
-        return {"kind": "system", "subtype": message.subtype}
-    return {"kind": "unknown", "repr": repr(message)}
+    """Convert an SDK dataclass message to a JSON-serializable dict.
+
+    Preserves the original field names by using dataclasses.asdict(), and tags
+    each message and its content blocks with ``__type__`` (the class name) so
+    the renderer can dispatch without a separate schema.
+    """
+    d = dataclasses.asdict(message)
+    d["__type__"] = type(message).__name__
+    # Tag nested content blocks (AssistantMessage / UserMessage)
+    if hasattr(message, "content") and isinstance(message.content, list):
+        for block, block_d in zip(message.content, d.get("content", [])):
+            if dataclasses.is_dataclass(block) and isinstance(block_d, dict):
+                block_d["__type__"] = type(block).__name__
+    return d
 
 
-def _render_message(msg: dict) -> None:
-    """Render a serialized message dict using Streamlit widgets."""
-    kind = msg.get("kind")
-    if kind == "assistant":
-        for block in msg.get("blocks", []):
-            _render_block(block)
-    elif kind == "result":
-        cost = f"${msg['total_cost_usd']:.4f}" if msg.get("total_cost_usd") else "N/A"
-        duration_s = msg.get("duration_ms", 0) / 1000
-        if msg.get("is_error"):
-            st.error(
-                f"Agent finished with error — {msg['num_turns']} turns · {cost} · {duration_s:.1f}s"
-            )
-        else:
-            st.success(f"Done — {msg['num_turns']} turns · {cost} · {duration_s:.1f}s")
-    elif kind == "user":
-        st.chat_message("user").markdown(msg.get("content", ""))
-    elif kind == "system":
-        subtype = msg.get("subtype") or "init"
-        st.info(f"System: {subtype}")
-
-
-def _render_block(block: dict) -> None:
-    """Render a single content block."""
-    btype = block.get("type")
-    if btype == "text":
-        text = block.get("text", "").strip()
-        if text:
-            st.markdown(text)
-    elif btype == "thinking":
-        with st.expander("Thinking", expanded=False):
-            st.text(block.get("thinking", ""))
-    elif btype == "tool_use":
-        name = block.get("name", "tool")
-        tool_input = block.get("input", {})
-        with st.expander(_tool_label(name, tool_input), expanded=False):
-            st.code(json.dumps(tool_input, indent=2, ensure_ascii=False), language="json")
-    elif btype == "tool_result":
-        content = block.get("content", "")
-        if block.get("is_error"):
-            st.error(content[:2000] if len(content) > 2000 else content)
-        elif content.strip():
-            truncated = content[:3000] + ("\n\n*(truncated)*" if len(content) > 3000 else "")
-            with st.container(border=True):
-                st.markdown(truncated)
-
-
-def _tool_label(name: str, tool_input: dict) -> str:
-    """Human-readable label for a tool use expander."""
-    if name == "Write":
-        return f"✏️ Write → {Path(tool_input.get('file_path', '?')).name}"
-    if name == "Edit":
-        return f"✏️ Edit → {Path(tool_input.get('file_path', '?')).name}"
-    if name == "Read":
-        return f"📖 Read → {Path(tool_input.get('file_path', '?')).name}"
-    if name == "Glob":
-        return f"🔍 Glob → {tool_input.get('pattern', '?')}"
-    if name == "mcp__bb__quality_control":
-        return "✅ Quality Control"
-    return f"🔧 {name}"
+# ------------------------------------------------------------------
+# Streaming-specific helpers (status label only)
+# ------------------------------------------------------------------
 
 
 def _tool_label_plain(name: str, tool_input: dict) -> str:
@@ -206,13 +113,32 @@ def _tool_label_plain(name: str, tool_input: dict) -> str:
 
 
 # ------------------------------------------------------------------
+# Agent log download (dev only)
+# ------------------------------------------------------------------
+
+
+def _maybe_log_download(messages: list[dict], *, key: str) -> None:
+    """Show a download button for the agent log JSON, only in BB_DEV mode."""
+    if not os.environ.get("BB_DEV"):
+        return
+    data = json.dumps(messages, indent=2, ensure_ascii=False).encode()
+    st.download_button(
+        "⬇ Agent log (JSON)",
+        data=data,
+        file_name="agent_log.json",
+        mime="application/json",
+        key=f"dl_agent_log_{key}",
+    )
+
+
+# ------------------------------------------------------------------
 # Agent streaming
 # ------------------------------------------------------------------
 
 
 def _result_summary(messages: list[dict]) -> str:
     """Extract the cost/turn/duration summary from a result message."""
-    result = next((m for m in reversed(messages) if m.get("kind") == "result"), None)
+    result = next((m for m in reversed(messages) if m.get("__type__") == "ResultMessage"), None)
     if not result:
         return ""
     cost = f"${result['total_cost_usd']:.4f}" if result.get("total_cost_usd") else "N/A"
@@ -247,25 +173,25 @@ def _stream_agent(
                 new_messages.append(serialized)
 
                 # Update the status label to reflect what's happening right now
-                kind = serialized.get("kind")
-                if kind == "assistant":
-                    for block in serialized.get("blocks", []):
-                        btype = block.get("type")
+                mtype = serialized.get("__type__")
+                if mtype == "AssistantMessage":
+                    for block in serialized.get("content", []):
+                        btype = block.get("__type__")
                         elapsed = time.monotonic() - last_action_t[0]
-                        if btype == "thinking":
+                        if btype == "ThinkingBlock":
                             status.update(label=f"Thinking… ({elapsed:.0f}s)")
-                        elif btype == "tool_use":
+                        elif btype == "ToolUseBlock":
                             plain = _tool_label_plain(block.get("name", ""), block.get("input", {}))
                             status.update(label=f"Thought {elapsed:.0f}s → {plain}")
-                        elif btype == "tool_result":
+                        elif btype == "ToolResultBlock":
                             status.update(label=f"Tool returned ({elapsed:.0f}s)")
-                        elif btype == "text":
+                        elif btype == "TextBlock":
                             status.update(label="Writing…")
                         last_action_t[0] = time.monotonic()
-                elif kind == "system":
+                elif mtype == "SystemMessage":
                     status.update(label="Starting…")
 
-                _render_message(serialized)
+                render_message(serialized)
 
         asyncio.run(_run())
 
@@ -304,11 +230,6 @@ def _next_deck_path(out_dir: OutDir) -> Path:
 # Results display
 # ------------------------------------------------------------------
 
-_BADGE_STYLE = (
-    "background:#e2e8f0;color:#2d3748;padding:2px 10px;border-radius:999px;"
-    "font-size:0.8em;font-family:monospace;display:inline-block;margin:2px 2px;"
-)
-
 
 def _show_results(
     work_dir: WorkDir,
@@ -341,15 +262,6 @@ def _show_results(
     col1.metric("Cards", len(game.cards))
     col2.metric("Sections", len(game.visual_identity.section_themes))
     col3.metric("Types", len(card_types))
-
-    # Card type badges, sorted by count descending
-    if card_types:
-        sorted_types = sorted(card_types.items(), key=lambda x: -x[1])
-        badges = "".join(
-            f'<span style="{_BADGE_STYLE}">{t}&nbsp;&nbsp;<b>{n}</b></span>'
-            for t, n in sorted_types
-        )
-        st.markdown(badges, unsafe_allow_html=True)
 
     # Render card PDFs when needed
     renders_dir = work_dir.renders_dir
@@ -485,8 +397,8 @@ def main() -> None:
         # Show previous run log collapsed
         prev_summary = _result_summary(st.session_state["messages"])
         with st.status(f"Previous run — {prev_summary}", state="complete", expanded=False):
-            for msg in st.session_state["messages"]:
-                _render_message(msg)
+            render_agent_log(st.session_state["messages"])
+        _maybe_log_download(st.session_state["messages"], key="prev_run")
 
         st.chat_message("user").markdown(pending)
 
@@ -499,6 +411,7 @@ def main() -> None:
             instructions=pending,
         )
         st.session_state["messages"].extend(new_msgs)
+        _maybe_log_download(st.session_state["messages"], key="follow_up")
 
         _show_results(work_dir, out_dir, config, new_version=True)
 
@@ -567,6 +480,7 @@ def main() -> None:
         new_msgs = _stream_agent(book_html, config, work_dir, out_dir)
         st.session_state["messages"] = new_msgs
         st.session_state["agent_done"] = True
+        _maybe_log_download(new_msgs, key="first_run")
 
         _show_results(work_dir, out_dir, config)
 
@@ -583,8 +497,8 @@ def main() -> None:
             state="complete",
             expanded=False,
         ):
-            for msg in st.session_state["messages"]:
-                _render_message(msg)
+            render_agent_log(st.session_state["messages"])
+        _maybe_log_download(st.session_state["messages"], key="replay")
 
         if st.session_state["agent_done"]:
             _show_results(

@@ -16,8 +16,11 @@ make dev                  # BB_DEV=1, src/web/app.py on port 9201
 # Run the Streamlit UI (prod mode, prod pages only)
 make run                  # src/web/app.py on port 9201
 
+# Run type-checking and linting. You should use this frequently as the best way to catch errors early.
+make check                # ty check src/ && ruff check src/
+
 # Run tests
-make test                 # ty check src/ && ruff check src/ && pytest tests/
+make test                 # pytest tests/
 ```
 
 ## Architecture
@@ -165,7 +168,7 @@ Jinja2 + WeasyPrint HTML templates that render cards to PDF. Each schema class d
 
 ### Tests (`tests/`)
 
-Run with `make test`. The command also runs `ty` type-checking and `ruff` linting. Add a quick test when adding new code.
+Run with `make test`. The command first runs `ty` type-checking and `ruff` linting, then runs the tests. Add a quick test when adding new code.
 
 A lot of files can also be run as CLI scripts for smoke testing and checking quality. You should run them when modifying corresponding code.
 
@@ -189,7 +192,13 @@ src/web/
     ├── 3_PDF_to_PNGs.py
     ├── 4_Merge_PDFs.py
     ├── 5_Quality_Control.py
-    └── 6_Card_Generator.py
+    ├── 6_Card_Generator.py
+    └── 7_Agent_Log.py
 ```
 
 When adding new pages, update the `st.navigation()` call in `src/web/app.py`.
+
+
+### Other notes
+- Always run `make check` before considering your work complete.
+- Always update this `CLAUDE.md` when making code changes. Consider `CLAUDE.md` as living documentation that needs to be kept up to date. If you notice `CLAUDE.md` is outdated, update it.

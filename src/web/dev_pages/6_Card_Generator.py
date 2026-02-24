@@ -42,19 +42,6 @@ and close it with ```.
 
 """
 
-CARD_TYPE_COLORS: dict[str, str] = {
-    "default": "#4A90D9",
-    "example": "#E8773D",
-    "section": "#7B68EE",
-    "question": "#D43F8D",
-    "definition": "#20B2AA",
-    "long_quote": "#B8860B",
-    "diagram": "#3CB371",
-    "enumeration": "#E05C30",
-    "axis": "#8B6FBF",
-}
-
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -162,7 +149,6 @@ def _section_colors(game: BBGame, section_idx: int) -> tuple[str, str, str]:
 def _render_card(card_dict: dict, img: Path | Exception | None) -> None:
     """Render a single card's content inside an expander."""
     card_type = card_dict.get("type", "unknown")
-    badge_color = CARD_TYPE_COLORS.get(card_type, "#888888")
 
     img_col, content_col = st.columns([2, 3], gap="medium")
 
@@ -175,14 +161,6 @@ def _render_card(card_dict: dict, img: Path | Exception | None) -> None:
             st.caption("_(no image for this card type)_")
 
     with content_col:
-        st.markdown(
-            f'<span style="background:{badge_color};color:#fff;padding:3px 10px;'
-            f'border-radius:4px;font-size:0.78em;font-weight:700;letter-spacing:.04em;">'
-            f"{card_type.replace('_', ' ').upper()}</span>",
-            unsafe_allow_html=True,
-        )
-        st.markdown("")  # small gap
-
         if title := card_dict.get("title") or card_dict.get("word"):
             st.markdown(f"### {title}")
 

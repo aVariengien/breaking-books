@@ -56,7 +56,7 @@ def main(
     config = Config(
         num_cards=num_cards,
         card_size=card_size,  # type: ignore[arg-type]
-        model=model,  # type: ignore[arg-type]
+        model=model,
         language=language,
         max_qc_calls=max_qc_calls,
         user_preferences=user_preferences,

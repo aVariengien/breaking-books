@@ -9,9 +9,11 @@ run:
 run-main:
 	uv run --frozen python -m main
 
-test:
+check:
 	uv run --frozen ty check
 	uv run --frozen ruff check
+
+test: check
 	uv run --frozen pytest tests/
 
 font-metadata:
