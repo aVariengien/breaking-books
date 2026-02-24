@@ -352,7 +352,7 @@ At this point you already started writting the complete `BBGame` object to `card
 
 #### Card writing guidelines
 
-**The first card in `cards` must always be a `BookCard` (section=0).** Fill its fields only from information clearly present in the book or from well-established public knowledge. Set `published_year` to null if the date is uncertain or the book is recent. This card does not count toward the target card count and needs no cross-references.
+**The first card in `cards` must always be a `BookCard` (section=0).** Fill its fields only from information clearly present in the book or from well-established public knowledge. Set `published_year` to null if the date is uncertain or the book is recent. This card needs no cross-references.
 
 **Language and Tone:**
 

@@ -14,7 +14,7 @@ class Schema(BaseModel):
     """
 
     type: str  # must be set to Literal['new-type'] in all subclasses
-    section: int  # 0-based section index
+    section: int = Field(description="0-based section index.")
     tag: Literal["top_end", "middle", "bottom_end"] | None = Field(
         default=None,
         description="Optional positional marker within the section.",

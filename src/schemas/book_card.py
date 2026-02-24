@@ -18,7 +18,9 @@ class BookCard(Schema):
     """
 
     type: Literal["book_card"] = "book_card"
-    section: int = Field(default=0, description="Always 0.")
+    section: Literal[0] = Field(
+        default=0, description="Always 0, as it's the first card of the the first section."
+    )
     title: str = Field(description="Full title of the book, including subtitle if any.")
     author: str = Field(description="Full name of the author(s).")
     hook: str = Field(
