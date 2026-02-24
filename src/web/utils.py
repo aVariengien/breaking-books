@@ -326,8 +326,6 @@ def render_deck_ui(
 
     `key_prefix` namespaces all widget keys for safe multi-instance embedding.
     """
-    import json
-
     try:
         json.loads(cards_json_bytes)
     except json.JSONDecodeError as exc:

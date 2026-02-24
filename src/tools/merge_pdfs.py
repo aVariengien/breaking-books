@@ -12,7 +12,7 @@ _A4_PORTRAIT_H = 841.890
 _A4_W = 841.890
 _A4_H = 595.276
 
-_GAP = 5.0
+_GAP = 1.0
 
 
 def merge_pdfs_to_print(

@@ -27,7 +27,7 @@ def run_qc(cards_json_path: Path) -> str:
 
 def run_streamlit() -> None:
     st.title("Quality Control")
-    st.caption("Pipeline step 3: cards.json → QC report")
+    st.write(f"Run quality control on a cards.json file from `{DATA_DIR.resolve()}`.")
 
     json_files = _json_files()
     if not json_files:

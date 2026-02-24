@@ -8,21 +8,22 @@ from lib.registry import get_all_schema_classes
 
 def run_streamlit() -> None:
     st.title("Build Schema Docs")
-    st.caption("Registry → agent prompt schema section")
+    st.write("Registry → agent prompt schema section")
 
     classes = get_all_schema_classes()
     st.metric("Schema classes found", len(classes))
-    st.write([c.__name__ for c in classes])
 
-    docs = build_schema_docs()
+    selected = st.radio("Show", ["All"] + [c.__name__ for c in classes])
+    if selected != "All":
+        classes = [cls for cls in classes if cls.__name__ == selected]
 
-    st.subheader("Rendered (as seen by the agent)")
-    st.markdown(docs)
+    docs = build_schema_docs(classes)
 
-    st.subheader("Raw text")
-    st.code(docs, language="markdown")
-
-    st.metric("Total characters", f"{len(docs):,}")
+    md, raw = st.tabs(["Rendered", "Raw"])
+    with md:
+        st.markdown(docs)
+    with raw:
+        st.code(docs, language="markdown")
 
 
 run_streamlit()

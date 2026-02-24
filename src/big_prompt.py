@@ -4,7 +4,7 @@ import json
 
 from lib.models import Config, WorkDir
 from lib.registry import get_all_schema_classes
-
+from schemas._base import Schema
 
 # ---------------------------------------------------------------------------
 # Prompt template
@@ -478,11 +478,14 @@ def _clean_json_schema(schema: dict) -> dict:
     return result
 
 
-def build_schema_docs() -> str:
+def build_schema_docs(schema_classes: list[type[Schema]] | None = None) -> str:
     """Render a human-readable reference for all card schemas, for the agent prompt."""
     sections: list[str] = []
 
-    for cls in get_all_schema_classes():
+    if schema_classes is None:
+        schema_classes = get_all_schema_classes()
+
+    for cls in schema_classes:
         type_val = cls.model_fields["type"].default
         lines: list[str] = []
 

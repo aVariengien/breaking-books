@@ -16,7 +16,9 @@ def _epubs() -> list[Path]:
 
 def run_streamlit() -> None:
     st.title("Extract Book Content")
-    st.caption("Pipeline step 1: EPUB → clean HTML")
+    st.write(
+        f"Extract book content from an EPUB file. Select any EPUB from `{DATA_DIR.resolve()}`."
+    )
 
     epubs = _epubs()
     if not epubs:
