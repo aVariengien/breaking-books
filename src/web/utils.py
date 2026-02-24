@@ -1,11 +1,12 @@
 """Shared utilities and reusable UI components for the Breaking Books web app."""
 
+import difflib
 import io
 import json
 import tempfile
 import zipfile
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
@@ -19,6 +20,21 @@ from tools.render_template import cards_json_to_pdfs
 # ---------------------------------------------------------------------------
 # Agent log rendering
 # ---------------------------------------------------------------------------
+
+
+def tool_label_plain(name: str, tool_input: dict) -> str:
+    """Label without emoji, suitable for the st.status() header."""
+    if name == "Write":
+        return f"Write {Path(tool_input.get('file_path', '?')).name}"
+    if name == "Edit":
+        return f"Edit {Path(tool_input.get('file_path', '?')).name}"
+    if name == "Read":
+        return f"Read {Path(tool_input.get('file_path', '?')).name}"
+    if name == "Glob":
+        return f"Glob {tool_input.get('pattern', '?')}"
+    if name == "mcp__bb__quality_control":
+        return "Quality Control"
+    return name
 
 
 def _tool_label(name: str, tool_input: dict) -> str:
@@ -35,21 +51,98 @@ def _tool_label(name: str, tool_input: dict) -> str:
     return f"🔧 {name}"
 
 
-def _render_block(block: dict) -> None:
+def update_status_for_message(status: Any, msg: dict, *, elapsed: float | None = None) -> None:
+    """Update a st.status() label to reflect the current message.
+
+    Pass ``elapsed`` (seconds since the last update) to include timing in labels,
+    e.g. "Thought 3s → Write cards.json". Without it, plain labels are used.
+    """
+    mtype = msg.get("__type__")
+    if mtype == "AssistantMessage":
+        for block in msg.get("content", []):
+            btype = block.get("__type__")
+            if btype == "ThinkingBlock":
+                label = f"Thinking… ({elapsed:.0f}s)" if elapsed is not None else "Thinking…"
+                status.update(label=label)
+            elif btype == "ToolUseBlock":
+                plain = tool_label_plain(block.get("name", ""), block.get("input", {}))
+                label = f"Thought {elapsed:.0f}s → {plain}" if elapsed is not None else f"→ {plain}"
+                status.update(label=label)
+            elif btype == "ToolResultBlock":
+                label = (
+                    f"Tool returned ({elapsed:.0f}s)" if elapsed is not None else "Tool returned"
+                )
+                status.update(label=label)
+            elif btype == "TextBlock":
+                status.update(label="Writing…")
+    elif mtype == "SystemMessage":
+        status.update(label="Starting…")
+
+
+def _render_edit_diff(tool_input: dict) -> None:
+    """Render an Edit tool input as a unified diff."""
+    old = tool_input.get("old_string", "")
+    new = tool_input.get("new_string", "")
+    name = Path(tool_input.get("file_path", "?")).name
+    diff_lines = list(
+        difflib.unified_diff(
+            old.splitlines(keepends=True),
+            new.splitlines(keepends=True),
+            fromfile=f"a/{name}",
+            tofile=f"b/{name}",
+            n=3,
+        )
+    )[3:]  # Drop the header lines
+    if diff_lines:
+        diff_lines = [line.rstrip() for line in diff_lines]
+        st.code("\n".join(diff_lines), language="diff")
+    else:
+        st.caption("(no changes)")
+
+
+def _render_tool_result_content(content: str, tool_name: str | None) -> None:
+    """Render tool result content using the appropriate display format for the tool."""
+    if tool_name == "mcp__bb__quality_control":
+        with st.expander("📝 Quality Control output", expanded=True):
+            st.markdown(content)
+    elif tool_name in ("Edit", "Write"):
+        # When successfull, the content just says so. Not useful.
+        pass
+    # elif tool_name in ("Write", ):
+    #     #
+    #     with st.expander(f"📝 {tool_name} successful", expanded=False):
+    #         st.markdown(content)
+    else:
+        with st.expander(f"📖 {tool_name} output", expanded=False):
+            st.code(content, language=None)
+
+
+def _render_block(block: dict, tool_names: dict[str, str] | None = None) -> None:
     btype = block.get("__type__")
     if btype == "TextBlock":
         text = block.get("text", "").strip()
         if text:
             st.markdown(text)
     elif btype == "ThinkingBlock":
-        with st.expander("Thinking", expanded=False):
-            st.text(block.get("thinking", ""))
+        thinking = block.get("thinking", "")
+        length = len(thinking.strip())
+        if length < 1000 and "\n" not in thinking.strip():
+            st.caption(f"Thinking: {thinking}")
+        else:
+            with st.expander(f"Thinking ({length} characters)", expanded=False):
+                st.markdown(thinking)
     elif btype == "ToolUseBlock":
         name = block.get("name", "tool")
         tool_input = block.get("input", {})
-        with st.expander(_tool_label(name, tool_input), expanded=False):
-            st.code(json.dumps(tool_input, indent=2, ensure_ascii=False), language="json")
+        expanded = name == "Edit"
+        with st.expander(_tool_label(name, tool_input), expanded=expanded):
+            if name == "Edit":
+                _render_edit_diff(tool_input)
+            else:
+                st.code(json.dumps(tool_input, indent=2, ensure_ascii=False), language="json")
     elif btype == "ToolResultBlock":
+        tool_use_id = block.get("tool_use_id", "")
+        tool_name = (tool_names or {}).get(tool_use_id)
         content = block.get("content", "")
         if isinstance(content, list):
             content = "\n".join(
@@ -57,19 +150,17 @@ def _render_block(block: dict) -> None:
             )
         content = str(content or "")
         if block.get("is_error"):
-            st.error(content[:2000] if len(content) > 2000 else content)
+            st.error(content)
         elif content.strip():
-            truncated = content[:3000] + ("\n\n*(truncated)*" if len(content) > 3000 else "")
-            with st.container(border=True):
-                st.markdown(truncated)
+            _render_tool_result_content(content, tool_name)
 
 
-def render_message(msg: dict) -> None:
+def render_message(msg: dict, tool_names: dict[str, str] | None = None) -> None:
     """Render a single serialized agent SDK message."""
     mtype = msg.get("__type__")
     if mtype == "AssistantMessage":
         for block in msg.get("content", []):
-            _render_block(block)
+            _render_block(block, tool_names)
     elif mtype == "ResultMessage":
         cost = f"${msg['total_cost_usd']:.4f}" if msg.get("total_cost_usd") else "N/A"
         duration_s = msg.get("duration_ms", 0) / 1000
@@ -83,7 +174,7 @@ def render_message(msg: dict) -> None:
         content = msg.get("content", "")
         if isinstance(content, list):
             for block in content:
-                _render_block(block)
+                _render_block(block, tool_names)
         elif isinstance(content, str) and content.strip():
             st.chat_message("user").markdown(content)
     elif mtype == "SystemMessage":
@@ -91,10 +182,22 @@ def render_message(msg: dict) -> None:
         st.info(f"System: {subtype}")
 
 
+def build_tool_names(messages: list[dict]) -> dict[str, str]:
+    """Build a tool_use_id → tool name mapping from a list of serialized messages."""
+    tool_names: dict[str, str] = {}
+    for msg in messages:
+        if msg.get("__type__") == "AssistantMessage":
+            for block in msg.get("content", []):
+                if block.get("__type__") == "ToolUseBlock" and block.get("id"):
+                    tool_names[block["id"]] = block.get("name", "")
+    return tool_names
+
+
 def render_agent_log(messages: list[dict]) -> None:
     """Render a list of serialized agent SDK messages."""
+    tool_names = build_tool_names(messages)
     for msg in messages:
-        render_message(msg)
+        render_message(msg, tool_names)
 
 
 # ---------------------------------------------------------------------------

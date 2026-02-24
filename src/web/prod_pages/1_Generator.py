@@ -3,7 +3,6 @@
 import asyncio
 import dataclasses
 import json
-import os
 import random
 import tempfile
 import time
@@ -20,7 +19,7 @@ from lib.models import BBGame, Config, OutDir, WorkDir
 from tools.extract_book_content import load_book
 from tools.merge_pdfs import merge_pdfs_to_print
 from tools.render_template import cards_json_to_pdfs
-from web.utils import deck_viewer, render_agent_log, render_message
+from web.utils import deck_viewer, render_agent_log, render_message, update_status_for_message
 
 # ------------------------------------------------------------------
 # Constants
@@ -93,34 +92,12 @@ def _serialize_message(message: Any) -> dict:
 
 
 # ------------------------------------------------------------------
-# Streaming-specific helpers (status label only)
-# ------------------------------------------------------------------
-
-
-def _tool_label_plain(name: str, tool_input: dict) -> str:
-    """Label without emoji, suitable for the status widget header."""
-    if name == "Write":
-        return f"Write {Path(tool_input.get('file_path', '?')).name}"
-    if name == "Edit":
-        return f"Edit {Path(tool_input.get('file_path', '?')).name}"
-    if name == "Read":
-        return f"Read {Path(tool_input.get('file_path', '?')).name}"
-    if name == "Glob":
-        return f"Glob {tool_input.get('pattern', '?')}"
-    if name == "mcp__bb__quality_control":
-        return "Quality Control"
-    return name
-
-
-# ------------------------------------------------------------------
-# Agent log download (dev only)
+# Agent log download
 # ------------------------------------------------------------------
 
 
 def _maybe_log_download(messages: list[dict], *, key: str) -> None:
-    """Show a download button for the agent log JSON, only in BB_DEV mode."""
-    if not os.environ.get("BB_DEV"):
-        return
+    """Show a download button for the agent log JSON."""
     data = json.dumps(messages, indent=2, ensure_ascii=False).encode()
     st.download_button(
         "⬇ Agent log (JSON)",
@@ -172,24 +149,9 @@ def _stream_agent(
                 serialized = _serialize_message(message)
                 new_messages.append(serialized)
 
-                # Update the status label to reflect what's happening right now
-                mtype = serialized.get("__type__")
-                if mtype == "AssistantMessage":
-                    for block in serialized.get("content", []):
-                        btype = block.get("__type__")
-                        elapsed = time.monotonic() - last_action_t[0]
-                        if btype == "ThinkingBlock":
-                            status.update(label=f"Thinking… ({elapsed:.0f}s)")
-                        elif btype == "ToolUseBlock":
-                            plain = _tool_label_plain(block.get("name", ""), block.get("input", {}))
-                            status.update(label=f"Thought {elapsed:.0f}s → {plain}")
-                        elif btype == "ToolResultBlock":
-                            status.update(label=f"Tool returned ({elapsed:.0f}s)")
-                        elif btype == "TextBlock":
-                            status.update(label="Writing…")
-                        last_action_t[0] = time.monotonic()
-                elif mtype == "SystemMessage":
-                    status.update(label="Starting…")
+                elapsed = time.monotonic() - last_action_t[0]
+                update_status_for_message(status, serialized, elapsed=elapsed)
+                last_action_t[0] = time.monotonic()
 
                 render_message(serialized)
 
