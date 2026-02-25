@@ -11,7 +11,7 @@ from typing import Any, Literal
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 
-from lib.constants import IMAGE_CACHE_DIR
+from lib.constants import IMAGE_CACHE_DIR, RUNWARE_MODEL
 from tools.merge_pdfs import merge_pdfs_to_print
 from tools.pdf_to_pngs import pdf_to_pngs
 from tools.render_template import cards_json_to_pdfs
@@ -343,11 +343,27 @@ def render_deck_ui(
         help="A6 → 4 cards per A4 sheet · A5 → 2 cards per A4 sheet",
     )
 
+    selected_model = st.text_input(
+        "Image model (Runware)",
+        value=RUNWARE_MODEL,
+        key=f"{key_prefix}_runware_model",
+        help="Runware model ID, e.g. runware:400@2 (FLUX Schnell), runware:101@1 (SDXL), runware:5@4 (FLUX Dev)",
+    )
+
+    force_regen = st.checkbox(
+        "Force re-generate images (ignore cache)",
+        value=False,
+        key=f"{key_prefix}_force_regen",
+        help="Always call the Runware API even if a cached image exists for this prompt.",
+    )
+
     if st.button("Render deck", type="primary", key=f"{key_prefix}_render_btn"):
         _do_render(
             cards_json_bytes=cards_json_bytes,
             card_size=card_size,
             key_prefix=key_prefix,
+            runware_model=selected_model,
+            force_regen_images=force_regen,
         )
 
 
@@ -356,6 +372,8 @@ def _do_render(
     cards_json_bytes: bytes,
     card_size: Literal["A6", "A5"],
     key_prefix: str,
+    runware_model: str | None = None,
+    force_regen_images: bool = False,
 ) -> None:
     IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -373,6 +391,8 @@ def _do_render(
                 cards_json_path,
                 renders_dir,
                 IMAGE_CACHE_DIR,
+                runware_model=runware_model,
+                force_regen_images=force_regen_images,
             )
             st.write(f"{len(pdf_paths)} cards rendered.")
             st.write("Merging into print sheet…")

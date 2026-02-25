@@ -5,7 +5,7 @@ Rich console handler and file handler automatically.
 
 Usage:
     from lib import log
-    log.setup(out_dir.log_path)   # once, before any pipeline step
+    log.setup()   # once, before any pipeline step
 
     # In any module:
     import logging
@@ -19,7 +19,6 @@ Usage:
 import json
 import logging
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from claude_agent_sdk import (
@@ -34,10 +33,12 @@ from claude_agent_sdk import (
 )
 from rich.logging import RichHandler
 
+from lib.constants import LOG_PATH
+
 _agent_logger = logging.getLogger("bb.agent")
 
 
-def setup(log_path: Path) -> None:
+def setup() -> None:
     """Configure the bb root logger: Rich console handler + plain file handler.
 
     All bb.* child loggers (bb.main, bb.agent, bb.tools, …) inherit these
@@ -51,7 +52,7 @@ def setup(log_path: Path) -> None:
     console_handler.setLevel(logging.DEBUG)
     root.addHandler(console_handler)
 
-    file_handler = logging.FileHandler(log_path, encoding="utf-8", mode="a")
+    file_handler = logging.FileHandler(LOG_PATH, encoding="utf-8", mode="a")
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(
         logging.Formatter("%(asctime)s  %(levelname)-8s  %(name)s  %(message)s", datefmt="%H:%M:%S")

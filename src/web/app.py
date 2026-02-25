@@ -7,6 +7,11 @@ Run in dev mode:   BB_DEV=1 streamlit run src/web/app.py  (adds dev pages)
 import os
 
 import streamlit as st
+from lib import log
+
+if "log_setup" not in st.session_state:
+    log.setup()
+    st.session_state["log_setup"] = True
 
 IS_DEV = os.environ.get("BB_DEV")
 

@@ -347,7 +347,6 @@ def main() -> None:
         config: Config = st.session_state["config"]
         work_dir: WorkDir = st.session_state["work_dir"]
         out_dir: OutDir = st.session_state["out_dir"]
-        log.setup(out_dir.log_path)
 
         for old_pdf in work_dir.renders_dir.glob("card-*.pdf"):
             old_pdf.unlink()
@@ -424,7 +423,6 @@ def main() -> None:
         config = Config(**pending_cfg)
         work_dir = WorkDir.create(output_dir / "tmp")
         out_dir = OutDir.create(output_dir / "out")
-        log.setup(out_dir.log_path)
 
         st.session_state["config"] = config
         st.session_state["work_dir"] = work_dir

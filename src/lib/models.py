@@ -86,11 +86,6 @@ class OutDir(BaseModel):
         return self.root / "book.html"
 
     @property
-    def log_path(self) -> Path:
-        """OUT/bb.log — full session log (appended across runs)."""
-        return self.root / "bb.log"
-
-    @property
     def images_dir(self) -> Path:
         """OUT/images/ — image cache keyed by SHA256(prompt), shared across runs."""
         return self.root / "images"

@@ -64,7 +64,7 @@ def main(
 
     work_dir = WorkDir.create(output_dir / "tmp")
     out_dir = OutDir.create(output_dir / "out")
-    log.setup(out_dir.log_path)
+    log.setup()
 
     # --- Step 1: load book (reuse cache on resume) ---
     if resume and out_dir.book_html_path.exists():

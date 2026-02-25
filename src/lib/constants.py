@@ -21,6 +21,9 @@ IMAGE_CACHE_DIR = PROJECT_ROOT / "data" / "image_cache"
 # Quality test renders directory
 QUALITY_TEST_RENDERS_DIR = PROJECT_ROOT / "data" / "quality_test_renders"
 
+# Log file path
+LOG_PATH = PROJECT_ROOT / "bb.log"
+
 # =============================================================================
 # Model Constants (LLM APIs)
 # =============================================================================

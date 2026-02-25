@@ -162,7 +162,11 @@ def render_all_templates(
 
     if n_jobs == 1:
         return [render_one_template(*t) for t in tasks]
-    return list(Parallel(n_jobs=n_jobs)(delayed(render_one_template)(*t) for t in tasks))
+    return list(
+        Parallel(n_jobs=n_jobs, backend="threading")(
+            delayed(render_one_template)(*t) for t in tasks
+        )
+    )
 
 
 # Predefined visual identities for testing and quality control
@@ -200,6 +204,8 @@ def render_card_to_html(
     images_dir: Path,
     *,
     visual_identity: dict | VisualIdentity,
+    runware_model: str | None = None,
+    force_regen_images: bool = False,
 ) -> str:
     """Render a single card dict with the named Jinja2 template, returning the HTML string."""
     vi_obj = (
@@ -221,7 +227,13 @@ def render_card_to_html(
     template_vars = dict(card)
 
     def get_image(prompt: str, width: int = 768, height: int = 512) -> str | None:
-        return get_image_base64(prompt, images_dir, size=(height, width))
+        return get_image_base64(
+            prompt,
+            images_dir,
+            size=(height, width),
+            model=runware_model,
+            force_regen=force_regen_images,
+        )
 
     def get_diagram_image(prompt: str, width: int = 400, height: int = 300) -> str | None:
         return get_diagram_image_base64(prompt, images_dir, size=(width, height))
@@ -243,6 +255,8 @@ def render_card_to_pdf(
     *,
     card_index: int,
     visual_identity: dict | VisualIdentity,
+    runware_model: str | None = None,
+    force_regen_images: bool = False,
 ) -> Path:
     """
     Render a single card dict with the named Jinja2 template to a PDF file.
@@ -253,7 +267,12 @@ def render_card_to_pdf(
     - Returns the path to the generated PDF.
     """
     rendered_html = render_card_to_html(
-        card, template_name, images_dir, visual_identity=visual_identity
+        card,
+        template_name,
+        images_dir,
+        visual_identity=visual_identity,
+        runware_model=runware_model,
+        force_regen_images=force_regen_images,
     )
 
     pdf_path = output_dir / f"card-{card_index}.pdf"
@@ -266,6 +285,8 @@ def cards_json_to_pdfs(
     output_dir: Path,
     images_dir: Path,
     *,
+    runware_model: str | None = None,
+    force_regen_images: bool = False,
     n_jobs: int = -1,
 ) -> list[Path]:
     """
@@ -304,6 +325,8 @@ def cards_json_to_pdfs(
             section_themes=[theme],  # Only pass the relevant theme
         )
 
+    rng = random.Random(json.dumps(game_data, sort_keys=True))
+
     def _resolve_template(card: dict) -> str:
         if "template" in card:
             return card["template"]
@@ -312,7 +335,7 @@ def cards_json_to_pdfs(
         if schema_cls:
             options = get_templates_for_schema(schema_cls)
             if options:
-                return random.choice(options).name
+                return rng.choice(options).name
         raise ValueError(f"No template found for card type {card_type!r}")
 
     tasks = [
@@ -320,7 +343,7 @@ def cards_json_to_pdfs(
         for i, card in enumerate(cards)
     ]
 
-    results: list[Path] = Parallel(n_jobs=n_jobs)(
+    results: list[Path] = Parallel(n_jobs=n_jobs, backend="threading")(
         delayed(render_card_to_pdf)(
             card,
             template_name,
@@ -328,6 +351,8 @@ def cards_json_to_pdfs(
             images_dir,
             card_index=i,
             visual_identity=vi,
+            runware_model=runware_model,
+            force_regen_images=force_regen_images,
         )
         for i, card, template_name, vi in tasks
     )
