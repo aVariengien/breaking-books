@@ -228,11 +228,9 @@ def _show_results(
     # Render card PDFs when needed
     renders_dir = work_dir.renders_dir
     existing_card_pdfs = sorted(renders_dir.glob("card-*.pdf"))
-    if (not existing_card_pdfs or new_version) and game.cards:
+    if (len(existing_card_pdfs) != len(game.cards) or new_version) and game.cards:
         with st.spinner("Rendering cards to PDF…"):
-            existing_card_pdfs = cards_json_to_pdfs(
-                cards_path, renders_dir, out_dir.images_dir, n_jobs=1
-            )
+            existing_card_pdfs = cards_json_to_pdfs(cards_path, renders_dir, out_dir.images_dir)
 
     # Build a new versioned deck if needed
     versions = _deck_versions(out_dir)
