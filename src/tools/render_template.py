@@ -194,26 +194,14 @@ PREDEFINED_STYLES = {
 }
 
 
-def render_card_to_pdf(
+def render_card_to_html(
     card: dict,
     template_name: str,
-    output_dir: Path,
     images_dir: Path,
     *,
-    card_index: int,
     visual_identity: dict | VisualIdentity,
-) -> Path:
-    """
-    Render a single card dict with the named Jinja2 template to a PDF file.
-
-    - Loads the template from src/templates/.
-    - Fetches and caches font_face_css (from visual_identity) and font_awesome_css.
-    - Exposes get_image(prompt, width, height) callable to the template.
-    - Passes visual_identity (fonts, colors) to template for styling.
-    - Assumes all cards render at A6 size (scaling happens at PDF merge stage).
-    - Writes output to `output_dir/card-{card_index}.pdf`.
-    - Returns the path to the generated PDF.
-    """
+) -> str:
+    """Render a single card dict with the named Jinja2 template, returning the HTML string."""
     vi_obj = (
         visual_identity
         if isinstance(visual_identity, VisualIdentity)
@@ -230,26 +218,43 @@ def render_card_to_pdf(
     )
     template = env.get_template(template_name)
 
-    # Prepare template variables
     template_vars = dict(card)
 
-    # Expose image generation functions to templates
     def get_image(prompt: str, width: int = 768, height: int = 512) -> str | None:
-        """Generate or retrieve a Runware cached image as base64. Called from Jinja2 templates."""
         return get_image_base64(prompt, images_dir, size=(height, width))
 
     def get_diagram_image(prompt: str, width: int = 400, height: int = 300) -> str | None:
-        """Generate or retrieve a Gemini Flash diagram image as base64. Called from Jinja2 templates."""
         return get_diagram_image_base64(prompt, images_dir, size=(width, height))
 
     template_vars["visual_identity"] = vi_obj.model_dump()
     template_vars["font_face_css"] = font_face_css
     template_vars["font_awesome_css"] = font_awesome_css
-
     template_vars["get_image"] = get_image
     template_vars["get_diagram_image"] = get_diagram_image
 
-    rendered_html = template.render(**template_vars)
+    return template.render(**template_vars)
+
+
+def render_card_to_pdf(
+    card: dict,
+    template_name: str,
+    output_dir: Path,
+    images_dir: Path,
+    *,
+    card_index: int,
+    visual_identity: dict | VisualIdentity,
+) -> Path:
+    """
+    Render a single card dict with the named Jinja2 template to a PDF file.
+
+    - Renders to HTML via render_card_to_html, then converts with WeasyPrint.
+    - Assumes all cards render at A6 size (scaling happens at PDF merge stage).
+    - Writes output to `output_dir/card-{card_index}.pdf`.
+    - Returns the path to the generated PDF.
+    """
+    rendered_html = render_card_to_html(
+        card, template_name, images_dir, visual_identity=visual_identity
+    )
 
     pdf_path = output_dir / f"card-{card_index}.pdf"
     HTML(string=rendered_html, base_url=str(TEMPLATES_DIR)).write_pdf(pdf_path)
