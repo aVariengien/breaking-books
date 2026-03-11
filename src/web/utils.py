@@ -18,72 +18,108 @@ from tools.render_template import cards_json_to_pdfs
 
 
 # ---------------------------------------------------------------------------
-# Agent log rendering
+# Token pricing
+# ---------------------------------------------------------------------------
+
+# Approximate prices in USD per 1M tokens (input, output).
+# Thinking tokens are billed at the output rate.
+# Sources: Google AI / Vertex AI pricing pages (verify before billing decisions).
+_MODEL_PRICING: dict[str, tuple[float, float]] = {
+    "gemini-3.1-flash-lite-preview": (0.10, 0.40),
+    "gemini-3.1-pro-preview": (1.25, 10.00),
+    "gemini-2.5-flash-preview": (0.15, 0.60),
+    "gemini-2.5-pro-preview": (1.25, 10.00),
+    "gemini-2.0-flash": (0.10, 0.40),
+    "gemini-2.0-flash-lite": (0.075, 0.30),
+}
+
+
+def _estimate_cost(model: str, prompt_tokens: int, response_tokens: int, thought_tokens: int) -> float | None:
+    """Return estimated cost in USD, or None if the model is not in the pricing table."""
+    # Strip provider prefix (e.g. "gemini/gemini-3.1-flash-lite-preview" → "gemini-3.1-flash-lite-preview")
+    key = model.split("/")[-1]
+    pricing = _MODEL_PRICING.get(key)
+    if pricing is None:
+        return None
+    input_rate, output_rate = pricing
+    cost = (prompt_tokens / 1_000_000) * input_rate
+    cost += ((response_tokens + thought_tokens) / 1_000_000) * output_rate
+    return cost
+
+
+# ---------------------------------------------------------------------------
+# ADK Event rendering
 # ---------------------------------------------------------------------------
 
 
-def tool_label_plain(name: str, tool_input: dict) -> str:
+def tool_label_plain(name: str, args: dict) -> str:
     """Label without emoji, suitable for the st.status() header."""
-    if name == "Write":
-        return f"Write {Path(tool_input.get('file_path', '?')).name}"
-    if name == "Edit":
-        return f"Edit {Path(tool_input.get('file_path', '?')).name}"
-    if name == "Read":
-        return f"Read {Path(tool_input.get('file_path', '?')).name}"
-    if name == "Glob":
-        return f"Glob {tool_input.get('pattern', '?')}"
-    if name == "mcp__bb__quality_control":
+    if name == "write_file":
+        return f"Write {Path(args.get('file_path', '?')).name}"
+    if name == "edit_file":
+        return f"Edit {Path(args.get('file_path', '?')).name}"
+    if name == "read_file":
+        return f"Read {Path(args.get('path', '?')).name}"
+    if name == "grep_files":
+        return f"Grep {args.get('pattern', '?')}"
+    if name == "quality_control":
         return "Quality Control"
     return name
 
 
-def _tool_label(name: str, tool_input: dict) -> str:
-    if name == "Write":
-        return f"✏️ Write → {Path(tool_input.get('file_path', '?')).name}"
-    if name == "Edit":
-        return f"✏️ Edit → {Path(tool_input.get('file_path', '?')).name}"
-    if name == "Read":
-        return f"📖 Read → {Path(tool_input.get('file_path', '?')).name}"
-    if name == "Glob":
-        return f"🔍 Glob → {tool_input.get('pattern', '?')}"
-    if name == "mcp__bb__quality_control":
+def _tool_label(name: str, args: dict) -> str:
+    if name == "write_file":
+        return f"✏️ Write → {Path(args.get('file_path', '?')).name}"
+    if name == "edit_file":
+        return f"✏️ Edit → {Path(args.get('file_path', '?')).name}"
+    if name == "read_file":
+        return f"📖 Read → {Path(args.get('path', '?')).name}"
+    if name == "grep_files":
+        return f"🔍 Grep → {args.get('pattern', '?')}"
+    if name == "quality_control":
         return "✅ Quality Control"
     return f"🔧 {name}"
 
 
-def update_status_for_message(status: Any, msg: dict, *, elapsed: float | None = None) -> None:
-    """Update a st.status() label to reflect the current message.
+def update_status_for_message(status: Any, event: dict, *, elapsed: float | None = None) -> None:
+    """Update a st.status() label to reflect the current serialized ADK event.
 
     Pass ``elapsed`` (seconds since the last update) to include timing in labels,
     e.g. "Thought 3s → Write cards.json". Without it, plain labels are used.
     """
-    mtype = msg.get("__type__")
-    if mtype == "AssistantMessage":
-        for block in msg.get("content", []):
-            btype = block.get("__type__")
-            if btype == "ThinkingBlock":
-                label = f"Thinking… ({elapsed:.0f}s)" if elapsed is not None else "Thinking…"
-                status.update(label=label)
-            elif btype == "ToolUseBlock":
-                plain = tool_label_plain(block.get("name", ""), block.get("input", {}))
-                label = f"Thought {elapsed:.0f}s → {plain}" if elapsed is not None else f"→ {plain}"
-                status.update(label=label)
-            elif btype == "ToolResultBlock":
-                label = (
-                    f"Tool returned ({elapsed:.0f}s)" if elapsed is not None else "Tool returned"
-                )
-                status.update(label=label)
-            elif btype == "TextBlock":
-                status.update(label="Writing…")
-    elif mtype == "SystemMessage":
+    etype = event.get("__type__")
+    if etype == "tool_call":
+        name = event.get("name", "")
+        args = event.get("args", {})
+        plain = tool_label_plain(name, args)
+        label = f"Thought {elapsed:.0f}s → {plain}" if elapsed is not None else f"→ {plain}"
+        status.update(label=label)
+    elif etype == "tool_result":
+        label = f"Tool returned ({elapsed:.0f}s)" if elapsed is not None else "Tool returned"
+        status.update(label=label)
+    elif etype == "text":
+        status.update(label="Writing…")
+    elif etype == "start":
         status.update(label="Starting…")
 
 
-def _render_edit_diff(tool_input: dict) -> None:
-    """Render an Edit tool input as a unified diff."""
-    old = tool_input.get("old_string", "")
-    new = tool_input.get("new_string", "")
-    name = Path(tool_input.get("file_path", "?")).name
+def _render_tool_result_content(content: str, tool_name: str | None) -> None:
+    """Render tool result content using the appropriate display format for the tool."""
+    if tool_name == "quality_control":
+        with st.expander("📝 Quality Control output", expanded=True):
+            st.markdown(content)
+    elif tool_name in ("edit_file", "write_file"):
+        pass
+    else:
+        with st.expander(f"📖 {tool_name} output", expanded=False):
+            st.code(content, language=None)
+
+
+def _render_edit_diff(args: dict) -> None:
+    """Render an edit_file call as a unified diff."""
+    old = args.get("old_string", "")
+    new = args.get("new_string", "")
+    name = Path(args.get("file_path", "?")).name
     diff_lines = list(
         difflib.unified_diff(
             old.splitlines(keepends=True),
@@ -92,7 +128,7 @@ def _render_edit_diff(tool_input: dict) -> None:
             tofile=f"b/{name}",
             n=3,
         )
-    )[3:]  # Drop the header lines
+    )[3:]
     if diff_lines:
         diff_lines = [line.rstrip() for line in diff_lines]
         st.code("\n".join(diff_lines), language="diff")
@@ -100,107 +136,76 @@ def _render_edit_diff(tool_input: dict) -> None:
         st.caption("(no changes)")
 
 
-def _render_tool_result_content(content: str, tool_name: str | None) -> None:
-    """Render tool result content using the appropriate display format for the tool."""
-    if tool_name == "mcp__bb__quality_control":
-        with st.expander("📝 Quality Control output", expanded=True):
-            st.markdown(content)
-    elif tool_name in ("Edit", "Write"):
-        # When successfull, the content just says so. Not useful.
-        pass
-    # elif tool_name in ("Write", ):
-    #     #
-    #     with st.expander(f"📝 {tool_name} successful", expanded=False):
-    #         st.markdown(content)
-    else:
-        with st.expander(f"📖 {tool_name} output", expanded=False):
-            st.code(content, language=None)
-
-
-def _render_block(block: dict, tool_names: dict[str, str] | None = None) -> None:
-    btype = block.get("__type__")
-    if btype == "TextBlock":
-        text = block.get("text", "").strip()
+def render_message(event: dict, _tool_names: dict[str, str] | None = None) -> None:
+    """Render a single serialized ADK event."""
+    etype = event.get("__type__")
+    if etype == "thought":
+        text = event.get("text", "").strip()
+        if text:
+            with st.expander("💭 Thinking…", expanded=False):
+                st.markdown(text)
+    elif etype == "text":
+        text = event.get("text", "").strip()
         if text:
             st.markdown(text)
-    elif btype == "ThinkingBlock":
-        thinking = block.get("thinking", "")
-        length = len(thinking.strip())
-        if length < 1000 and "\n" not in thinking.strip():
-            st.caption(f"Thinking: {thinking}")
-        else:
-            with st.expander(f"Thinking ({length} characters)", expanded=False):
-                st.markdown(thinking)
-    elif btype == "ToolUseBlock":
-        name = block.get("name", "tool")
-        tool_input = block.get("input", {})
-        expanded = name == "Edit"
-        with st.expander(_tool_label(name, tool_input), expanded=expanded):
-            if name == "Edit":
-                _render_edit_diff(tool_input)
+    elif etype == "tool_call":
+        name = event.get("name", "tool")
+        args = event.get("args", {})
+        expanded = name == "edit_file"
+        with st.expander(_tool_label(name, args), expanded=expanded):
+            if name == "edit_file":
+                _render_edit_diff(args)
             else:
-                st.code(json.dumps(tool_input, indent=2, ensure_ascii=False), language="json")
-    elif btype == "ToolResultBlock":
-        tool_use_id = block.get("tool_use_id", "")
-        tool_name = (tool_names or {}).get(tool_use_id)
-        content = block.get("content", "")
-        if isinstance(content, list):
-            content = "\n".join(
-                c.get("text", repr(c)) if isinstance(c, dict) else repr(c) for c in content
-            )
-        content = str(content or "")
-        if block.get("is_error"):
+                st.code(json.dumps(args, indent=2, ensure_ascii=False), language="json")
+    elif etype == "tool_result":
+        name = event.get("name", "")
+        content = event.get("content", "")
+        is_error = event.get("is_error", False)
+        if is_error:
             st.error(content)
         elif content.strip():
-            _render_tool_result_content(content, tool_name)
-    else:
-        st.write(f"Unknown block type: {btype}")
-        st.code(json.dumps(block, indent=2, ensure_ascii=False), language="json")
+            _render_tool_result_content(content, name)
+    elif etype == "done":
+        turns = event.get("turns", 0)
+        elapsed_s = event.get("elapsed_s")
+        prompt_tokens = event.get("prompt_tokens", 0)
+        response_tokens = event.get("response_tokens", 0)
+        thought_tokens = event.get("thought_tokens", 0)
+        model = event.get("model", "")
+        total_tokens = prompt_tokens + response_tokens + thought_tokens
+
+        label = f"Done — {turns} turn{'s' if turns != 1 else ''}"
+        if elapsed_s is not None:
+            mins, secs = divmod(int(elapsed_s), 60)
+            time_str = f"{mins}m {secs}s" if mins else f"{secs}s"
+            label += f" · {time_str}"
+        st.success(label)
+
+        if total_tokens > 0:
+            cost = _estimate_cost(model, prompt_tokens, response_tokens, thought_tokens)
+            cols = st.columns(4)
+            cols[0].metric("Input tokens", f"{prompt_tokens:,}")
+            cols[1].metric("Output tokens", f"{response_tokens:,}")
+            cols[2].metric("Thinking tokens", f"{thought_tokens:,}")
+            if cost is not None:
+                cols[3].metric("Est. cost", f"${cost:.4f}")
+            else:
+                cols[3].metric("Total tokens", f"{total_tokens:,}")
+    elif etype == "user":
+        text = event.get("text", "")
+        if text.strip():
+            st.chat_message("user").markdown(text)
 
 
-def render_message(msg: dict, tool_names: dict[str, str] | None = None) -> None:
-    """Render a single serialized agent SDK message."""
-    mtype = msg.get("__type__")
-    if mtype == "AssistantMessage":
-        for block in msg.get("content", []):
-            _render_block(block, tool_names)
-    elif mtype == "ResultMessage":
-        cost = f"${msg['total_cost_usd']:.4f}" if msg.get("total_cost_usd") else "N/A"
-        duration_s = msg.get("duration_ms", 0) / 1000
-        if msg.get("is_error"):
-            st.error(
-                f"Agent finished with error — {msg['num_turns']} turns · {cost} · {duration_s:.1f}s"
-            )
-        else:
-            st.success(f"Done — {msg['num_turns']} turns · {cost} · {duration_s:.1f}s")
-    elif mtype == "UserMessage":
-        content = msg.get("content", "")
-        if isinstance(content, list):
-            for block in content:
-                _render_block(block, tool_names)
-        elif isinstance(content, str) and content.strip():
-            st.chat_message("user").markdown(content)
-    elif mtype == "SystemMessage":
-        subtype = msg.get("subtype") or "init"
-        st.info(f"System: {subtype}")
+def build_tool_names(events: list[dict]) -> dict[str, str]:
+    """Build a call_id → tool name mapping from serialized events (kept for compatibility)."""
+    return {e["call_id"]: e["name"] for e in events if e.get("__type__") == "tool_call" and e.get("call_id")}
 
 
-def build_tool_names(messages: list[dict]) -> dict[str, str]:
-    """Build a tool_use_id → tool name mapping from a list of serialized messages."""
-    tool_names: dict[str, str] = {}
-    for msg in messages:
-        if msg.get("__type__") == "AssistantMessage":
-            for block in msg.get("content", []):
-                if block.get("__type__") == "ToolUseBlock" and block.get("id"):
-                    tool_names[block["id"]] = block.get("name", "")
-    return tool_names
-
-
-def render_agent_log(messages: list[dict]) -> None:
-    """Render a list of serialized agent SDK messages."""
-    tool_names = build_tool_names(messages)
-    for msg in messages:
-        render_message(msg, tool_names)
+def render_agent_log(events: list[dict]) -> None:
+    """Render a list of serialized ADK events."""
+    for event in events:
+        render_message(event)
 
 
 # ---------------------------------------------------------------------------

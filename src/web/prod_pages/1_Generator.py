@@ -1,7 +1,6 @@
 """Streamlit UI for Breaking Books v2."""
 
 import asyncio
-import dataclasses
 import json
 import random
 import tempfile
@@ -70,25 +69,96 @@ def _init_state() -> None:
 
 
 # ------------------------------------------------------------------
-# Message serialization
+# Event serialization (ADK Events → JSON-serializable dicts)
 # ------------------------------------------------------------------
 
 
-def _serialize_message(message: Any) -> dict:
-    """Convert an SDK dataclass message to a JSON-serializable dict.
+def _serialize_event(event: Any) -> list[dict]:
+    """Convert one ADK Event into one or more JSON-serializable dicts.
 
-    Preserves the original field names by using dataclasses.asdict(), and tags
-    each message and its content blocks with ``__type__`` (the class name) so
-    the renderer can dispatch without a separate schema.
+    Returns a list because one Event can carry multiple pieces (e.g. a tool
+    call AND a tool result in separate events — but we produce one dict per
+    logical item so the UI can render them in order).
     """
-    d = dataclasses.asdict(message)
-    d["__type__"] = type(message).__name__
-    # Tag nested content blocks (AssistantMessage / UserMessage)
-    if hasattr(message, "content") and isinstance(message.content, list):
-        for block, block_d in zip(message.content, d.get("content", [])):
-            if dataclasses.is_dataclass(block) and isinstance(block_d, dict):
-                block_d["__type__"] = type(block).__name__
-    return d
+    items: list[dict] = []
+    author = getattr(event, "author", None) or "?"
+    content = getattr(event, "content", None)
+    partial = bool(getattr(event, "partial", False))
+
+    if author == "user":
+        text = ""
+        if content and content.parts:
+            text = " ".join(getattr(p, "text", "") or "" for p in content.parts).strip()
+        if text:
+            items.append({"__type__": "user", "text": text})
+        return items
+
+    # Always extract thought parts first — they can accompany tool calls too.
+    # Skip partial=True thought chunks: they're streaming fragments; only emit
+    # the final complete thought so the UI gets one clean expander per thought.
+    if content and content.parts:
+        thought_text = " ".join(
+            getattr(p, "text", "") or ""
+            for p in content.parts
+            if getattr(p, "thought", False)
+        ).strip()
+        if thought_text and not partial:
+            items.append({"__type__": "thought", "text": thought_text})
+
+    fn_calls = _safe_fn_calls(event)
+    fn_responses = _safe_fn_responses(event)
+
+    for fc in fn_calls:
+        items.append(
+            {
+                "__type__": "tool_call",
+                "call_id": getattr(fc, "id", ""),
+                "name": getattr(fc, "name", ""),
+                "args": dict(getattr(fc, "args", {}) or {}),
+            }
+        )
+
+    for fr in fn_responses:
+        name = getattr(fr, "name", "")
+        response = getattr(fr, "response", {}) or {}
+        content_val = response.get("result", "")
+        if not isinstance(content_val, str):
+            content_val = json.dumps(content_val, ensure_ascii=False, default=str)
+        items.append(
+            {
+                "__type__": "tool_result",
+                "name": name,
+                "content": content_val,
+                "is_error": "Error" in content_val[:20] if content_val else False,
+            }
+        )
+
+    if content and content.parts and not fn_calls and not fn_responses:
+        plain_text = " ".join(
+            getattr(p, "text", "") or ""
+            for p in content.parts
+            if not getattr(p, "thought", False)
+        ).strip()
+        if plain_text:
+            items.append({"__type__": "text", "text": plain_text, "partial": partial})
+
+    return items
+
+
+def _safe_fn_calls(event: Any) -> list:
+    try:
+        r = event.get_function_calls()
+        return r if r else []
+    except Exception:
+        return []
+
+
+def _safe_fn_responses(event: Any) -> list:
+    try:
+        r = event.get_function_responses()
+        return r if r else []
+    except Exception:
+        return []
 
 
 # ------------------------------------------------------------------
@@ -113,14 +183,21 @@ def _maybe_log_download(messages: list[dict], *, key: str) -> None:
 # ------------------------------------------------------------------
 
 
-def _result_summary(messages: list[dict]) -> str:
-    """Extract the cost/turn/duration summary from a result message."""
-    result = next((m for m in reversed(messages) if m.get("__type__") == "ResultMessage"), None)
-    if not result:
-        return ""
-    cost = f"${result['total_cost_usd']:.4f}" if result.get("total_cost_usd") else "N/A"
-    dur = result.get("duration_ms", 0) / 1000
-    return f"{result['num_turns']} turns · {cost} · {dur:.0f}s"
+def _result_summary(events: list[dict]) -> str:
+    """Build a brief summary string from the event list."""
+    done = next((e for e in reversed(events) if e.get("__type__") == "done"), None)
+    parts = []
+    if done and done.get("turns"):
+        turns = done["turns"]
+        parts.append(f"{turns} turn{'s' if turns != 1 else ''}")
+    if done and done.get("elapsed_s") is not None:
+        elapsed_s = int(done["elapsed_s"])
+        mins, secs = divmod(elapsed_s, 60)
+        parts.append(f"{mins}m {secs}s" if mins else f"{secs}s")
+    if not parts:
+        tool_calls = sum(1 for e in events if e.get("__type__") == "tool_call")
+        parts.append(f"{tool_calls} tool calls" if tool_calls else "completed")
+    return " · ".join(parts)
 
 
 def _stream_agent(
@@ -132,9 +209,15 @@ def _stream_agent(
     resume: bool = False,
     instructions: str = "",
 ) -> list[dict]:
-    """Run the agent, streaming all messages inside a single st.status() container."""
-    new_messages: list[dict] = []
-    last_action_t: list[float] = [time.monotonic()]
+    """Run the agent, streaming all events inside a single st.status() container."""
+    new_events: list[dict] = []
+    start_t = time.monotonic()
+    last_action_t: list[float] = [start_t]
+    turn_count: list[int] = [0]
+    had_error: list[bool] = [False]
+    prompt_tokens: list[int] = [0]
+    response_tokens: list[int] = [0]
+    thought_tokens: list[int] = [0]
 
     with st.status(
         "Resuming…" if resume else "Generating your deck…",
@@ -142,30 +225,61 @@ def _stream_agent(
     ) as status:
 
         async def _run() -> None:
-            async for message in run_agent(
+            async for event in run_agent(
                 book_html, config, work_dir, out_dir, resume=resume, instructions=instructions
             ):
-                log.log_message(message)
-                serialized = _serialize_message(message)
-                new_messages.append(serialized)
+                log.log_message(event)
 
-                elapsed = time.monotonic() - last_action_t[0]
-                update_status_for_message(status, serialized, elapsed=elapsed)
-                last_action_t[0] = time.monotonic()
+                # Accumulate token usage from each model response event.
+                usage = getattr(event, "usage_metadata", None)
+                if usage:
+                    prompt_tokens[0] += getattr(usage, "prompt_token_count", 0) or 0
+                    response_tokens[0] += getattr(usage, "response_token_count", 0) or 0
+                    thought_tokens[0] += getattr(usage, "thoughts_token_count", 0) or 0
 
-                render_message(serialized)
+                serialized_items = _serialize_event(event)
+                for item in serialized_items:
+                    new_events.append(item)
+                    elapsed = time.monotonic() - last_action_t[0]
+                    update_status_for_message(status, item, elapsed=elapsed)
+                    last_action_t[0] = time.monotonic()
+                    render_message(item)
 
-        asyncio.run(_run())
+                # Count turn completions via is_final_response
+                try:
+                    if event.is_final_response():
+                        turn_count[0] += 1
+                except Exception:
+                    pass
 
-        is_error = any(m.get("is_error") for m in new_messages if m.get("kind") == "result")
-        summary = _result_summary(new_messages)
+        try:
+            asyncio.run(_run())
+        except Exception as exc:
+            had_error[0] = True
+            st.error(f"Agent error: {exc}")
+
+        elapsed_s = time.monotonic() - start_t
+        done_event = {
+            "__type__": "done",
+            "turns": turn_count[0],
+            "elapsed_s": round(elapsed_s, 1),
+            "prompt_tokens": prompt_tokens[0],
+            "response_tokens": response_tokens[0],
+            "thought_tokens": thought_tokens[0],
+            "model": config.model,
+        }
+        new_events.append(done_event)
+        render_message(done_event)
+
+        summary = _result_summary(new_events)
+        is_error = had_error[0]
         status.update(
             label=f"Generation failed — {summary}" if is_error else f"Agent log — {summary}",
             state="error" if is_error else "complete",
             expanded=False,
         )
 
-    return new_messages
+    return new_events
 
 
 # ------------------------------------------------------------------
@@ -292,7 +406,11 @@ def _config_section() -> tuple[Any, int, str, str, str | None, int, str]:
     col1, col2 = st.columns(2)
     with col1:
         num_cards = st.slider("Number of cards", 5, 80, 15)
-        model = st.selectbox("Model", ["haiku", "sonnet", "opus"], index=0)
+        model = st.text_input(
+            "Model",
+            value="gemini/gemini-3.1-flash-lite-preview",
+            help="LiteLLM model string, e.g. gemini/gemini-3.1-flash-lite-preview, anthropic/claude-3-5-sonnet-20241022, openai/gpt-4o",
+        )
         max_qc_calls = st.slider(
             "Quality review rounds",
             1,
@@ -319,7 +437,7 @@ def _config_section() -> tuple[Any, int, str, str, str | None, int, str]:
         uploaded_file,
         num_cards,
         card_size or "A6",
-        model or "haiku",
+        model or "gemini/gemini-3.1-flash-lite-preview",
         language or None,
         max_qc_calls,
         user_preferences,

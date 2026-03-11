@@ -41,10 +41,9 @@ class Config(BaseModel):
     language: str | None = None  # None → detect from book
     max_qc_calls: int = 3
     user_preferences: str = ""
-    # Yes, str is a supertype of Literal, but this is for clarity:
-    # only haiku, sonnet, and opus work by default, but custom models
-    # can be specified following: https://code.claude.com/docs/en/llm-gateway
-    model: Literal["haiku", "sonnet", "opus"] | str = "haiku"
+    # Any LiteLLM model string, e.g. "gemini/gemini-3.1-flash-lite-preview",
+    # "anthropic/claude-3-5-sonnet-20241022", "openai/gpt-4o".
+    model: str = "gemini/gemini-3.1-flash-lite-preview"
 
 
 class WorkDir(BaseModel):
@@ -77,7 +76,7 @@ class OutDir(BaseModel):
 
     @property
     def session_id_path(self) -> Path:
-        """OUT/session_id.txt — Claude Agent SDK session ID for resume."""
+        """OUT/session_id.txt — ADK session ID for resume."""
         return self.root / "session_id.txt"
 
     @property

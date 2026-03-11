@@ -1,10 +1,10 @@
 PORT := 9201
 
 dev:
-	PYTHONPATH=src BB_DEV=1 uv run --frozen streamlit run --server.port $(PORT) src/web/app.py
+	PYTHONPATH=src BB_DEV=1 DYLD_LIBRARY_PATH=/opt/homebrew/lib uv run --frozen streamlit run --server.port $(PORT) src/web/app.py
 
 run:
-	PYTHONPATH=src uv run --frozen streamlit run --server.port $(PORT) src/web/app.py
+	PYTHONPATH=src DYLD_LIBRARY_PATH=/opt/homebrew/lib uv run --frozen streamlit run --server.port $(PORT) src/web/app.py
 
 run-main:
 	uv run --frozen python -m main

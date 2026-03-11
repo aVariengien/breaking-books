@@ -35,4 +35,4 @@ RUNWARE_MODEL = "runware:101@1"
 GEMINI_DIAGRAM_MODEL = "gemini-2.5-flash-image"
 
 # Cerebras LLM for quality control reviews
-QUALITY_CONTROL_MODEL = "gpt-oss-120b"
+QUALITY_CONTROL_MODEL = "zai-glm-4.7"

@@ -29,7 +29,10 @@ def main(
     ),
     num_cards: int = typer.Option(15, help="Target number of cards"),
     card_size: str = typer.Option("A6", help="Card size: A5 or A6"),
-    model: str = typer.Option("haiku", help="Model: haiku, sonnet, or opus"),
+    model: str = typer.Option(
+        "gemini/gemini-3.1-flash-lite-preview",
+        help="LiteLLM model string, e.g. gemini/gemini-3.1-flash-lite-preview, anthropic/claude-3-5-sonnet-20241022, openai/gpt-4o",
+    ),
     language: str | None = typer.Option(None, help="Output language (default: detect from book)"),
     max_qc_calls: int = typer.Option(3, help="Maximum quality control iterations"),
     user_preferences: str = typer.Option("", help="Free-text preferences forwarded to the agent"),

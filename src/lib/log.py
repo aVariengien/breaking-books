@@ -12,8 +12,8 @@ Usage:
     logger = logging.getLogger("bb.tools.render")
     logger.info("Rendering %d cards…", n)
 
-    # For agent SDK messages:
-    log.log_message(message)
+    # For ADK events:
+    log.log_message(event)
 """
 
 import json
@@ -21,16 +21,6 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from claude_agent_sdk import (
-    AssistantMessage,
-    ResultMessage,
-    SystemMessage,
-    TextBlock,
-    ThinkingBlock,
-    ToolResultBlock,
-    ToolUseBlock,
-    UserMessage,
-)
 from rich.logging import RichHandler
 
 from lib.constants import LOG_PATH
@@ -63,59 +53,98 @@ def setup() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Agent SDK message dispatcher
+# ADK Event dispatcher
 # ---------------------------------------------------------------------------
 
 
-def log_message(message: Any) -> None:
-    """Log one agent SDK message at the appropriate level."""
-    if isinstance(message, UserMessage):
-        content = message.content if isinstance(message.content, str) else repr(message.content)
-        _agent_logger.debug("User: %s", content)
-
-    elif isinstance(message, AssistantMessage):
-        for block in message.content:
-            if isinstance(block, TextBlock) and block.text.strip():
-                _agent_logger.info(block.text.rstrip())
-            elif isinstance(block, ThinkingBlock):
-                _agent_logger.debug("Thinking: %s", block.thinking)
-            elif isinstance(block, ToolUseBlock):
-                _agent_logger.info(
-                    "Tool %s\n%s",
-                    block.name,
-                    json.dumps(block.input, indent=2, ensure_ascii=False),
-                )
-            elif isinstance(block, ToolResultBlock):
-                content = _coerce_content(block.content)
-                if block.is_error:
-                    _agent_logger.error("Tool result (error): %s", content)
-                else:
-                    _agent_logger.info("Tool result: %s", content)
-
-    elif isinstance(message, SystemMessage):
-        _agent_logger.debug("System: %s", message.subtype)
-
-    elif isinstance(message, ResultMessage):
-        cost = f"${message.total_cost_usd:.4f}" if message.total_cost_usd else "N/A"
-        if message.is_error:
-            _agent_logger.error(
-                "Agent finished with error — turns=%d cost=%s", message.num_turns, cost
-            )
-        else:
-            _agent_logger.info(
-                "Agent done — turns=%d cost=%s session=%s",
-                message.num_turns,
-                cost,
-                message.session_id,
-            )
-
-    else:
-        _agent_logger.debug(repr(message))
+def log_message(event: Any) -> None:
+    """Log one ADK Event at the appropriate level."""
+    try:
+        _log_event(event)
+    except Exception as exc:  # noqa: BLE001
+        _agent_logger.debug("Could not log event %r: %s", type(event).__name__, exc)
 
 
-def _coerce_content(content: Any) -> str:
-    if isinstance(content, list):
-        return "\n".join(
-            c.get("text", repr(c)) if isinstance(c, dict) else repr(c) for c in content
+def _log_event(event: Any) -> None:
+    author = getattr(event, "author", None) or "?"
+    content = getattr(event, "content", None)
+    partial = getattr(event, "partial", False)
+
+    # User message
+    if author == "user":
+        if content and content.parts:
+            for part in content.parts:
+                text = getattr(part, "text", None)
+                if text and text.strip():
+                    _agent_logger.debug("User: %s", text.rstrip())
+        return
+
+    # Function call requests (agent asking to use a tool)
+    fn_calls = _get_function_calls(event)
+    for fc in fn_calls:
+        name = getattr(fc, "name", "?")
+        args = getattr(fc, "args", {})
+        _agent_logger.info(
+            "Tool %s\n%s",
+            name,
+            json.dumps(args, indent=2, ensure_ascii=False, default=str),
         )
-    return str(content or "")
+
+    # Function responses (tool results)
+    fn_responses = _get_function_responses(event)
+    for fr in fn_responses:
+        name = getattr(fr, "name", "?")
+        response = getattr(fr, "response", {})
+        text = _extract_response_text(response)
+        _agent_logger.info("Tool result [%s]: %s", name, text[:500] if text else repr(response))
+
+    # Text content — always scan all parts so thoughts before tool calls are logged.
+    if content and content.parts:
+        for part in content.parts:
+            text = getattr(part, "text", None)
+            is_thought = bool(getattr(part, "thought", False))
+            if text and text.strip():
+                if is_thought:
+                    if not partial:
+                        _agent_logger.debug("💭 Thinking: %s", text.rstrip())
+                elif partial:
+                    _agent_logger.debug("(streaming) %s", text.rstrip())
+                else:
+                    _agent_logger.info(text.rstrip())
+
+    # Final response marker
+    is_final = False
+    try:
+        is_final = event.is_final_response()
+    except Exception:
+        pass
+    if is_final and not fn_calls and not fn_responses:
+        _agent_logger.debug("Agent produced final response")
+
+
+def _get_function_calls(event: Any) -> list:
+    try:
+        result = event.get_function_calls()
+        return result if result else []
+    except Exception:
+        return []
+
+
+def _get_function_responses(event: Any) -> list:
+    try:
+        result = event.get_function_responses()
+        return result if result else []
+    except Exception:
+        return []
+
+
+def _extract_response_text(response: Any) -> str:
+    if isinstance(response, str):
+        return response
+    if isinstance(response, dict):
+        # ADK wraps function return value in {"result": ...}
+        val = response.get("result", response)
+        if isinstance(val, str):
+            return val
+        return json.dumps(val, ensure_ascii=False, default=str)
+    return str(response)

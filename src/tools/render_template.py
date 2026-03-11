@@ -125,7 +125,7 @@ def render_all_templates(
     images_dir: Path,
     visual_identity: dict,
     example_cards: dict[str, dict] | None = None,
-    n_jobs: int = -1,
+    n_jobs: int = 5,
 ) -> list[RenderResult]:
     """
     Render every (card_type, template) combination with example cards.
@@ -163,7 +163,7 @@ def render_all_templates(
     if n_jobs == 1:
         return [render_one_template(*t) for t in tasks]
     return list(
-        Parallel(n_jobs=n_jobs, backend="threading")(
+        Parallel(n_jobs=n_jobs, backend="loky")(
             delayed(render_one_template)(*t) for t in tasks
         )
     )
@@ -287,7 +287,7 @@ def cards_json_to_pdfs(
     *,
     runware_model: str | None = None,
     force_regen_images: bool = False,
-    n_jobs: int = -1,
+    n_jobs: int = 5,
 ) -> list[Path]:
     """
     Render all cards in bbGame.cards to individual PDF files.
@@ -343,7 +343,10 @@ def cards_json_to_pdfs(
         for i, card in enumerate(cards)
     ]
 
-    results: list[Path] = Parallel(n_jobs=n_jobs, backend="threading")(
+    # Use "loky" (subprocess-based) instead of "threading" so each WeasyPrint
+    # worker runs in an isolated process. WeasyPrint's Pango/GLib internals are
+    # not thread-safe and cause SIGSEGV on macOS with the threading backend.
+    results: list[Path] = Parallel(n_jobs=n_jobs, backend="loky")(
         delayed(render_card_to_pdf)(
             card,
             template_name,
