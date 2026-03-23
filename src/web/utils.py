@@ -21,29 +21,40 @@ from tools.render_template import cards_json_to_pdfs
 # Token pricing
 # ---------------------------------------------------------------------------
 
-# Approximate prices in USD per 1M tokens (input, output).
+# Prices in USD per 1M tokens (cached_input, non_cached_input, output).
 # Thinking tokens are billed at the output rate.
-# Sources: Google AI / Vertex AI pricing pages (verify before billing decisions).
-_MODEL_PRICING: dict[str, tuple[float, float]] = {
-    "gemini-3.1-flash-lite-preview": (0.10, 0.40),
-    "gemini-3.1-pro-preview": (1.25, 10.00),
-    "gemini-2.5-flash-preview": (0.15, 0.60),
-    "gemini-2.5-pro-preview": (1.25, 10.00),
-    "gemini-2.0-flash": (0.10, 0.40),
-    "gemini-2.0-flash-lite": (0.075, 0.30),
+# Pro prices use the <=200k-token tier; >200k tier is $4.00/$18.00/$0.40 respectively.
+# Sources: Google AI Studio pricing page, Mar 2026.
+_MODEL_PRICING: dict[str, tuple[float, float, float]] = {
+    #                                  cached   non-cached  output
+    "gemini-3.1-flash-lite-preview":   (0.025,   0.25,      1.50),
+    "gemini-3.1-pro-preview":          (0.20,    2.00,     12.00),
+    "gemini-3.1-pro-preview-customtools": (0.20, 2.00,     12.00),
+    "gemini-2.5-flash-preview":        (0.0375,  0.15,      0.60),
+    "gemini-2.5-pro-preview":          (0.3125,  1.25,     10.00),
+    "gemini-2.0-flash":                (0.025,   0.10,      0.40),
+    "gemini-2.0-flash-lite":           (0.01875, 0.075,     0.30),
+    # Anthropic — cache hits price used as cached_input rate
+    "claude-sonnet-4-6":               (0.30,    3.00,     15.00),
 }
 
 
-def _estimate_cost(model: str, prompt_tokens: int, response_tokens: int, thought_tokens: int) -> float | None:
+def _estimate_cost(
+    model: str,
+    non_cached_prompt_tokens: int,
+    cached_prompt_tokens: int,
+    output_tokens: int,
+) -> float | None:
     """Return estimated cost in USD, or None if the model is not in the pricing table."""
     # Strip provider prefix (e.g. "gemini/gemini-3.1-flash-lite-preview" → "gemini-3.1-flash-lite-preview")
     key = model.split("/")[-1]
     pricing = _MODEL_PRICING.get(key)
     if pricing is None:
         return None
-    input_rate, output_rate = pricing
-    cost = (prompt_tokens / 1_000_000) * input_rate
-    cost += ((response_tokens + thought_tokens) / 1_000_000) * output_rate
+    cached_rate, non_cached_rate, output_rate = pricing
+    cost = (cached_prompt_tokens / 1_000_000) * cached_rate
+    cost += (non_cached_prompt_tokens / 1_000_000) * non_cached_rate
+    cost += (output_tokens / 1_000_000) * output_rate
     return cost
 
 
@@ -168,11 +179,12 @@ def render_message(event: dict, _tool_names: dict[str, str] | None = None) -> No
     elif etype == "done":
         turns = event.get("turns", 0)
         elapsed_s = event.get("elapsed_s")
-        prompt_tokens = event.get("prompt_tokens", 0)
-        response_tokens = event.get("response_tokens", 0)
+        non_cached_prompt_tokens = event.get("non_cached_prompt_tokens", 0)
+        cached_prompt_tokens = event.get("cached_prompt_tokens", 0)
+        output_tokens = event.get("output_tokens", 0)
         thought_tokens = event.get("thought_tokens", 0)
         model = event.get("model", "")
-        total_tokens = prompt_tokens + response_tokens + thought_tokens
+        total_tokens = non_cached_prompt_tokens + cached_prompt_tokens + output_tokens
 
         label = f"Done — {turns} turn{'s' if turns != 1 else ''}"
         if elapsed_s is not None:
@@ -182,15 +194,16 @@ def render_message(event: dict, _tool_names: dict[str, str] | None = None) -> No
         st.success(label)
 
         if total_tokens > 0:
-            cost = _estimate_cost(model, prompt_tokens, response_tokens, thought_tokens)
-            cols = st.columns(4)
-            cols[0].metric("Input tokens", f"{prompt_tokens:,}")
-            cols[1].metric("Output tokens", f"{response_tokens:,}")
-            cols[2].metric("Thinking tokens", f"{thought_tokens:,}")
+            cost = _estimate_cost(model, non_cached_prompt_tokens, cached_prompt_tokens, output_tokens)
+            cols = st.columns(5)
+            cols[0].metric("Input tokens", f"{non_cached_prompt_tokens:,}")
+            cols[1].metric("Cached tokens", f"{cached_prompt_tokens:,}")
+            cols[2].metric("Output tokens", f"{output_tokens:,}")
+            cols[3].metric("Thinking tokens", f"{thought_tokens:,}")
             if cost is not None:
-                cols[3].metric("Est. cost", f"${cost:.4f}")
+                cols[4].metric("Est. cost", f"${cost:.4f}")
             else:
-                cols[3].metric("Total tokens", f"{total_tokens:,}")
+                cols[4].metric("Total tokens", f"{total_tokens:,}")
     elif etype == "user":
         text = event.get("text", "")
         if text.strip():
@@ -293,7 +306,10 @@ def deck_viewer(
         )
 
     zip_key = f"{key_prefix}_card_zip"
-    if card_pdfs and zip_key in st.session_state:
+    if card_pdfs:
+        if zip_key not in st.session_state:
+            with st.spinner("Converting cards to images…"):
+                st.session_state[zip_key] = make_card_images_zip(card_pdfs)
         secondary.append(
             (
                 "⬇ Card images",
@@ -304,13 +320,6 @@ def deck_viewer(
         )
 
     _download_row_and_viewer(selected_path.read_bytes(), selected_path.name, secondary, key_prefix)
-
-    # Card images ZIP generation button (shown until ZIP is ready)
-    if card_pdfs and zip_key not in st.session_state:
-        if st.button("Generate card images (ZIP)", key=f"{zip_key}_gen"):
-            with st.spinner("Converting cards to images…"):
-                st.session_state[zip_key] = make_card_images_zip(card_pdfs)
-            st.rerun()
 
 
 def make_card_images_zip(card_pdfs: list[Path], *, dpi: int = 150) -> bytes:

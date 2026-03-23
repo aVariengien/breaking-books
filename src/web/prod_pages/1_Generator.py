@@ -24,6 +24,13 @@ from web.utils import deck_viewer, render_agent_log, render_message, update_stat
 # Constants
 # ------------------------------------------------------------------
 
+_FREE_MODELS = ["gemini/gemini-3.1-flash-lite-preview"]
+_ADMIN_MODELS = [
+    "gemini/gemini-3.1-flash-lite-preview",
+    "gemini/gemini-3.1-pro-preview",
+    "anthropic/claude-sonnet-4-6",
+]
+
 _HOW_TO_PLAY = """
 **1. 👋 Welcome & Setup** *(10–15 min)*
 - Gather your group (3–5 people is ideal).
@@ -59,6 +66,7 @@ _DEFAULTS: dict[str, Any] = {
     "generation_started": False,
     "_pending_file_path": None,
     "_pending_config": None,
+    "admin_unlocked": False,
 }
 
 
@@ -215,8 +223,9 @@ def _stream_agent(
     last_action_t: list[float] = [start_t]
     turn_count: list[int] = [0]
     had_error: list[bool] = [False]
-    prompt_tokens: list[int] = [0]
-    response_tokens: list[int] = [0]
+    non_cached_prompt_tokens: list[int] = [0]
+    cached_prompt_tokens: list[int] = [0]
+    output_tokens: list[int] = [0]
     thought_tokens: list[int] = [0]
 
     with st.status(
@@ -233,9 +242,15 @@ def _stream_agent(
                 # Accumulate token usage from each model response event.
                 usage = getattr(event, "usage_metadata", None)
                 if usage:
-                    prompt_tokens[0] += getattr(usage, "prompt_token_count", 0) or 0
-                    response_tokens[0] += getattr(usage, "response_token_count", 0) or 0
-                    thought_tokens[0] += getattr(usage, "thoughts_token_count", 0) or 0
+                    print(f"usage_metadata: {usage!r}")
+                    cached = getattr(usage, "cached_content_token_count", 0) or 0
+                    prompt_total = getattr(usage, "prompt_token_count", 0) or 0
+                    candidates = getattr(usage, "candidates_token_count", 0) or 0
+                    thoughts = getattr(usage, "thoughts_token_count", 0) or 0
+                    non_cached_prompt_tokens[0] += prompt_total - cached
+                    cached_prompt_tokens[0] += cached
+                    output_tokens[0] += candidates + thoughts
+                    thought_tokens[0] += thoughts
 
                 serialized_items = _serialize_event(event)
                 for item in serialized_items:
@@ -259,14 +274,24 @@ def _stream_agent(
             st.error(f"Agent error: {exc}")
 
         elapsed_s = time.monotonic() - start_t
+        from web.utils import _estimate_cost
+
+        estimated_cost_usd = _estimate_cost(
+            config.model,
+            non_cached_prompt_tokens[0],
+            cached_prompt_tokens[0],
+            output_tokens[0],
+        )
         done_event = {
             "__type__": "done",
             "turns": turn_count[0],
             "elapsed_s": round(elapsed_s, 1),
-            "prompt_tokens": prompt_tokens[0],
-            "response_tokens": response_tokens[0],
+            "non_cached_prompt_tokens": non_cached_prompt_tokens[0],
+            "cached_prompt_tokens": cached_prompt_tokens[0],
+            "output_tokens": output_tokens[0],
             "thought_tokens": thought_tokens[0],
             "model": config.model,
+            **({"estimated_cost_usd": round(estimated_cost_usd, 6)} if estimated_cost_usd is not None else {}),
         }
         new_events.append(done_event)
         render_message(done_event)
@@ -365,6 +390,30 @@ def _show_results(
 
 
 # ------------------------------------------------------------------
+# Admin dialog
+# ------------------------------------------------------------------
+
+
+@st.dialog("Admin Access")
+def _admin_dialog() -> None:
+    if st.session_state.get("admin_unlocked"):
+        st.success("Admin access is already unlocked.")
+        return
+    try:
+        admin_pw: str = st.secrets["admin_password"]
+    except (KeyError, FileNotFoundError):
+        st.warning("No admin password is configured in `.streamlit/secrets.toml`.")
+        return
+    entered = st.text_input("Password", type="password", key="_admin_pw_input")
+    if st.button("Unlock", type="primary", key="_admin_pw_submit", use_container_width=True):
+        if entered == admin_pw:
+            st.session_state["admin_unlocked"] = True
+            st.rerun()
+        else:
+            st.error("Incorrect password.")
+
+
+# ------------------------------------------------------------------
 # Sidebar
 # ------------------------------------------------------------------
 
@@ -389,6 +438,13 @@ def _sidebar() -> None:
                     del st.session_state[key]
                 st.rerun()
 
+        # Admin lock/unlock button — always at the very bottom of the sidebar
+        st.divider()
+        admin = st.session_state.get("admin_unlocked", False)
+        icon = "🔓 Admin unlocked" if admin else "🔒 Admin"
+        if st.button(icon, use_container_width=True, key="_admin_btn"):
+            _admin_dialog()
+
 
 # ------------------------------------------------------------------
 # Config section (main area)
@@ -403,19 +459,33 @@ def _config_section() -> tuple[Any, int, str, str, str | None, int, str]:
         label_visibility="collapsed",
     )
 
+    admin = st.session_state.get("admin_unlocked", False)
+
     col1, col2 = st.columns(2)
     with col1:
-        num_cards = st.slider("Number of cards", 5, 80, 15)
-        model = st.text_input(
-            "Model",
-            value="gemini/gemini-3.1-flash-lite-preview",
-            help="LiteLLM model string, e.g. gemini/gemini-3.1-flash-lite-preview, anthropic/claude-3-5-sonnet-20241022, openai/gpt-4o",
-        )
+        num_cards = st.slider("Number of cards", 5, 80, 35)
+        if admin:
+            model = st.selectbox(
+                "Model",
+                _ADMIN_MODELS,
+                index=0,
+                key="_model_admin_sel",
+            ) or _ADMIN_MODELS[0]
+        else:
+            st.selectbox(
+                "Model",
+                _FREE_MODELS,
+                index=0,
+                disabled=True,
+                help="Unlock admin access to use advanced models.",
+                key="_model_locked_sel",
+            )
+            model = _FREE_MODELS[0]
         max_qc_calls = st.slider(
             "Quality review rounds",
             1,
             5,
-            3,
+            1,
             help="How many times the AI reviews and improves the cards before finishing.",
         )
     with col2:
@@ -437,7 +507,7 @@ def _config_section() -> tuple[Any, int, str, str, str | None, int, str]:
         uploaded_file,
         num_cards,
         card_size or "A6",
-        model or "gemini/gemini-3.1-flash-lite-preview",
+        model or _FREE_MODELS[0],
         language or None,
         max_qc_calls,
         user_preferences,
