@@ -2,8 +2,7 @@
 {#
   question-provocation.html.jinja2
   Texture fills the card as a background wash.
-  A giant "?" watermark. The question centred, large and bold.
-  Confrontational. Nothing else.
+  The question centred, large and bold. Confrontational. Nothing else.
 #}
 {% from '_card_base.html.jinja2' import type_icon_class, tag_class, top_band_html, css_imports, shared_css %}
 {% set theme = visual_identity.section_themes[0] %}
@@ -39,22 +38,6 @@
       text-align: center;
     }
 
-    /* Giant watermark "?" */
-    .watermark {
-      position: absolute;
-      z-index: 1;
-      font-family: {% if visual_identity.title_font %}'{{ visual_identity.title_font }}', {% endif %}Georgia, serif;
-      font-size: 120pt;
-      font-weight: 700;
-      color: {{ theme.accent_color }};
-      opacity: 0.12;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      line-height: 1;
-      pointer-events: none;
-    }
-
     .question-text {
       font-family: {% if visual_identity.title_font %}'{{ visual_identity.title_font }}', {% endif %}Georgia, serif;
       font-size: 21pt;
@@ -74,8 +57,6 @@
     {% if tex %}
       <div class="bg-texture" style="background-image: url('data:image/png;base64,{{ tex }}');"></div>
     {% endif %}
-
-    <div class="watermark">?</div>
 
     <div class="card-content">
       <p class="question-text">{{ question }}</p>

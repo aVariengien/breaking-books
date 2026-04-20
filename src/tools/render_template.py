@@ -176,7 +176,7 @@ PREDEFINED_STYLES = {
         title_font="EB Garamond",
         body_font="Lora",
         section_themes=[
-            SectionTheme(main_color="#1a1a1a", dark_color="#000000", accent_color="#FF6B6B"),
+            SectionTheme(main_color="#8B1E3F", dark_color="#1a1a1a", accent_color="#C97B45"),
         ],
     ),
     "minimal": VisualIdentity(
@@ -184,7 +184,7 @@ PREDEFINED_STYLES = {
         title_font="IBM Plex Mono",
         body_font="IBM Plex Mono",
         section_themes=[
-            SectionTheme(main_color="#000000", dark_color="#000000", accent_color="#0066CC"),
+            SectionTheme(main_color="#1E3A8A", dark_color="#000000", accent_color="#0066CC"),
         ],
     ),
     "contemporary": VisualIdentity(

@@ -178,12 +178,21 @@ When you've found a structure you're satisfied with, write it into `book_plan` a
 **Book-level: typography.** Choose exactly two fonts — one for titles, one for body — from the index below. These apply to the entire deck. The fonts should carry the book's intellectual register and emotional tone. Don't default to safe choices. A book about systems thinking and a book about grief should not share fonts.
 
 **Section-level: color.** For each section, define three colors:
-- `main_color` — the dominant background tint
+- `main_color` — the section identity color. Used for the **thick card border**, the type-icon spine on Definition cards, and the half-square grouping cue. This is the color a player sees first across the table — pick something **saturated and confident**, not a pale tint.
 - `dark_color` — borders, heavy type, structural elements
 - `accent_color` — the pairing accent; also the ink color for texture image patterns
 
-Color tells a player which section they're holding before they read a word. Make sections visually distinct. One strong hue per section, not five mild ones. The accent color should thread through the image prompts for every card in that section — the visual connective tissue even as styles vary.
-Don't use white for any of the colors, the background is already white.
+Color tells a player which section they're holding before they read a word.
+
+**High contrast across sections is non-negotiable.** A player should be able to tell two sections apart by glancing at the borders from two meters away. Concretely:
+
+- **Spread sections across the color wheel.** Do not pick five neighboring shades of the same hue family. Walk the wheel: e.g. deep crimson → forest green → indigo → burnt amber → slate teal. Adjacent sections should sit at least ~60° apart on the hue wheel, or contrast clearly in lightness/saturation.
+- **Avoid pale tints for `main_color`.** It carries a 9pt border around the entire card. Powder-pinks, baby-blues, beiges and washed-out pastels will look weak and read as "almost white" next to neighboring cards. Aim for medium-to-dark, saturated hues (think ink, oil-paint, fabric-dye — not watercolor).
+- **No two sections should share a hue family.** If section 2 is "ocean blue", section 4 cannot be "sky blue" — pick a different hue entirely.
+- **Cohere through the deck, distinguish through the section.** All sections should belong to the same overall palette mood (e.g. all earthy, all jewel-tones, all muted neons), but each one must own a clearly different hue within that mood.
+- **One strong hue per section, not five mild ones.** Dominant `main_color` with sharp `accent_color`. Don't try to balance three equal colors per section — let the `main_color` lead.
+
+The accent color should thread through the image prompts for every card in that section — the visual connective tissue even as styles vary. Don't use white for any of the colors, the background is already white.
 
 #### Design principles
 
@@ -365,21 +374,29 @@ At this point you already started writting the complete `BBGame` object to `card
 * **Use the config language {{CONFIG\_LANGUAGE}} for all card content.** Illustration prompts and diagram prompts are always in English (for generation tools).
 * **Write descriptions for players who haven't read the book.** Every card must stand on its own. If a concept requires prior knowledge, either define it inline or ensure a Definition card exists.
 * **Use simpler words when possible.** If a word has a specialized meaning and you're not defining it, replace it with a word that doesn't require a reference.
-* **Bold the titles of other cards** when you mention them. This is both a visual signal to the player and a structural check for you: if you can't find anything to bold, the card may be an island.
+* **Bold the titles of other cards** when you mention them. This is both a visual signal to the player and a structural check for you: if you can't find anything to bold, the card may be an island. Bold using html <b></b> tags.
 * **Write examples like short stories.** Who did what, why it mattered, what happened. Make the reader care in three sentences.
 * **Quotes must be verbatim and full sentences** that can be read as standalone — no fragments, no mid-sentence starts.
 
 **Card Modifiers**
 
-Cards can be grouped into sequences using the `tag` field. A group is a set of 2–4 cards that belong together so tightly that players should handle them as a block. The visual rendering draws a continuous border around the group: the first card gets `tag: "top_end"` (border closed on top), middle cards get `tag: "middle"` (borders only on the sides), and the last card gets `tag: "bottom_end"` (border closed on the bottom).
+Cards can be grouped into sequences using the `tag` field. A group is a set of 2–4 cards that belong together so tightly that players should handle them as a block.
+
+Groups render **horizontally** — the cards are meant to be placed **side-by-side, left to right**. The visual rendering opens the inner border between adjacent cards and adds a tilted half-square cue on each open edge; when two grouped cards meet, the two halves form a complete diamond, signaling the seam. Use these tag values, in order:
+
+- `tag: "top_end"` — the **leftmost** card of the group (right edge open, half-diamond on the right)
+- `tag: "middle"` — any card between the ends (both side edges open, half-diamonds on both sides)
+- `tag: "bottom_end"` — the **rightmost** card of the group (left edge open, half-diamond on the left)
+
+The legacy names (`top_end` / `bottom_end`) are kept for schema compatibility but they now mark *first* and *last* in a left-to-right horizontal sequence. The order of the cards in the `cards` array must match the intended left-to-right reading order.
 
 The bar for grouping is high. It is not "these cards are related" — that's true of half the deck, and it's what the title-reference system is for. The bar is: *this relationship is the point*. You are making an editorial claim that these things, taken together, carry a meaning that neither carries alone. A cause and its consequences. A principle and an example that makes it unforgettable. An emission and its sink. Expect to have at most one group per section.
 
 Mostly pairs. Occasionally a gradation of three when items in an enumeration are important enough to deserve a full card each but must be understood as a sequence. Almost never four. If you find yourself wanting to group more than four cards, you're probably creating an enumeration in disguise — use the Enumeration card type instead.
 
-**Example:** In the Lean Startup section, **Work-In-Progress** (DefaultCard, `tag: "top_end"`) and **Small Batches** (DefaultCard, `tag: "bottom_end"`) could be paired. WIP names the enemy; small batches name the weapon. The pairing makes the editorial claim: *these are two sides of the same coin, and you can't understand either without the other.*
+**Example:** In the Lean Startup section, **Work-In-Progress** (DefaultCard, `tag: "top_end"`, placed left) and **Small Batches** (DefaultCard, `tag: "bottom_end"`, placed right) could be paired. WIP names the enemy; small batches name the weapon. The pairing makes the editorial claim: *these are two sides of the same coin, and you can't understand either without the other.*
 
-**Example:** In the Moral Ambition section, **Clarkson's Sailors** (ExampleCard, `tag: "top_end"`) and **Equiano's Bestseller** (ExampleCard, `tag: "bottom_end"`) could be paired. Both are abolitionists who used **moral reframing**, but in strikingly different ways — one reframed the victims, the other reframed himself. The pairing says: *look at these two strategies side by side*.
+**Example:** In the Moral Ambition section, **Clarkson's Sailors** (ExampleCard, `tag: "top_end"`) and **Equiano's Bestseller** (ExampleCard, `tag: "bottom_end"`) could be paired side-by-side. Both are abolitionists who used **moral reframing**, but in strikingly different ways — one reframed the victims, the other reframed himself. The pairing says: *look at these two strategies side by side*.
 
 #### Images
 Most cards carry an image. Images are not decoration — they are the first thing a player sees, and they set the emotional register of the card before a word is read. A good image makes the card's idea land faster and stick longer.

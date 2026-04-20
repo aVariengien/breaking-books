@@ -124,7 +124,7 @@ async def generate_single_image_async(
         positivePrompt=prompt,
         model=runware_model,
         numberResults=1,
-        negativePrompt="Text, label, diagram, blurry, low quality, distorted",
+        #negativePrompt="Text, label, diagram, blurry, low quality, distorted", not supported in recent models
         height=image_size[0],
         width=image_size[1],
     )

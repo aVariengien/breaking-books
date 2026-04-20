@@ -8,7 +8,12 @@
     - theme  = visual_identity.section_themes[0]  (only one theme is passed per card)
     - section is 0-based; displayed as 1-based
     - tag in {None, 'top_end', 'middle', 'bottom_end'}
-    - border color = main_color (section identity); icon in top-right corner, same color
+      Despite the legacy names, tags now group cards HORIZONTALLY:
+        top_end    -> first card in a group (right edge open, diamond cue on right)
+        middle     -> middle card (both side edges open, diamonds on both sides)
+        bottom_end -> last card (left edge open, diamond cue on left)
+    - border color = main_color (section identity)
+    - type icon top-right + section number bottom-left, both in #111 (text color)
 #}
 
 {%- macro type_icon_class(card_type) -%}
@@ -35,6 +40,7 @@
 
 {%- macro top_band_html(card_type, section) -%}
 <i class="fa-solid {{ type_icon_class(card_type) }} card-corner-icon"></i>
+<div class="card-section-label">§{{ section + 1 }}</div>
 {%- endmacro -%}
 
 {%- macro css_imports(font_face_css, font_awesome_css) -%}
@@ -63,20 +69,64 @@ body {
   flex-direction: column;
   overflow: hidden;
   background: #ffffff;
-  border: 4.6pt solid {{ theme.main_color }};
+  border: 9pt solid {{ theme.main_color }};
   position: relative;
 }
-.card.tag-top    { border-bottom: none; }
-.card.tag-middle { border-top: none; border-bottom: none; }
-.card.tag-bottom { border-top: none; }
 
-/* Type icon in top-right corner — sole section identity marker */
+/* Horizontal grouping: tags now strip the LEFT or RIGHT border so cards
+   placed side-by-side merge into a single bordered block. */
+.card.tag-top    { border-right: none; }
+.card.tag-middle { border-left: none; border-right: none; }
+.card.tag-bottom { border-left: none; }
+
+/* Tilted half-square cue on the edge that joins the next card. Half of the
+   diamond is clipped by overflow:hidden, the other half sits inside the
+   card. When two grouped cards meet, the two halves form a full diamond. */
+.card.tag-top::after,
+.card.tag-middle::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 5mm;
+  height: 5mm;
+  background: {{ theme.main_color }};
+  transform: translate(50%, -50%) rotate(45deg);
+  z-index: 6;
+}
+.card.tag-bottom::before,
+.card.tag-middle::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 5mm;
+  height: 5mm;
+  background: {{ theme.main_color }};
+  transform: translate(-50%, -50%) rotate(45deg);
+  z-index: 6;
+}
+
+/* Type icon in top-right corner — text-color so it reads as a label, not chrome */
 .card-corner-icon {
   position: absolute;
   top: 3.5mm;
   right: 3.5mm;
   font-size: 11pt;
-  color: {{ theme.main_color }};
+  color: #111;
+  z-index: 10;
+}
+
+/* Section number in bottom-right corner — text-color, same family as titles */
+.card-section-label {
+  position: absolute;
+  bottom: 3mm;
+  right: 3.5mm;
+  font-size: 9pt;
+  font-weight: 700;
+  color: #111;
+  font-family: {% if visual_identity.title_font %}'{{ visual_identity.title_font }}', {% endif %}Georgia, serif;
+  line-height: 1;
   z-index: 10;
 }
 

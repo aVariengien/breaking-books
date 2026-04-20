@@ -16,7 +16,7 @@ from lib.constants import GEMINI_DIAGRAM_MODEL, RUNWARE_MODEL
 
 logger = logging.getLogger("bb.tools.generate_images")
 
-_NEGATIVE_PROMPT = "Text, label, diagram, blurry, low quality, distorted"
+#_NEGATIVE_PROMPT = "Text, label, diagram, blurry, low quality, distorted"
 
 # Default image size (height, width) for card illustrations.
 # Landscape-oriented to fit the left/right image slot in card templates.
@@ -65,10 +65,10 @@ async def _generate_image_async(
         positivePrompt=prompt,
         model=effective_model,
         numberResults=1,
-        negativePrompt=_NEGATIVE_PROMPT,
         height=size[0],
         width=size[1],
         includeCost=True,
+        #negativePrompt=_NEGATIVE_PROMPT, not supported in recent models
     )
     images = await runware.imageInference(requestImage=request_image)
 

@@ -144,18 +144,20 @@ Jinja2 + WeasyPrint HTML templates that render cards to PDF. Each schema class d
    - For CSS background: `background-image: url('data:image/png;base64,{{ img }}');`
 
 7. **Shared macros** (`_card_base.html.jinja2`):
-   - Import: `{% from '_card_base.html.jinja2' import type_icon_class, tag_class, top_band_html, css_imports, shared_css %}`
-   - `css_imports(font_face_css, font_awesome_css)` — both passed from render_card_to_pdf (which fetches and caches them from visual_identity)
-   - `shared_css(visual_identity, theme)` — base CSS: `@page`, border, top band, title, `<b>` underline
-   - `top_band_html(type, section)` — renders the 9mm dark band with section label + type icon
-   - `tag_class(tag)` — returns CSS class string (` tag-top`, ` tag-middle`, ` tag-bottom`, or empty)
-   - Border tag system: `.tag-top` removes bottom border, `.tag-middle` removes top+bottom, `.tag-bottom` removes top
+ - Import: `{% from '_card_base.html.jinja2' import type_icon_class, tag_class, top_band_html, css_imports, shared_css %}`
+ - `css_imports(font_face_css, font_awesome_css)` — both passed from render_card_to_pdf (which fetches and caches them from visual_identity)
+ - `shared_css(visual_identity, theme)` — base CSS: `@page`, 9pt `main_color` border, corner icon + section label, horizontal grouping (`tag-*` border + diamond cue), title, `<b>` accent underline
+ - `top_band_html(type, section)` — renders the top-right type icon (`#111`) and the bottom-right `§N` section label (`#111`, displayed 1-indexed: schema `section=0` renders as `§1`)
+ - `tag_class(tag)` — returns CSS class string (` tag-top`, ` tag-middle`, ` tag-bottom`, or empty)
+ - Horizontal grouping: `.tag-top` removes the **right** border, `.tag-middle` removes both **side** borders, `.tag-bottom` removes the **left** border. A tilted half-square in `main_color` is positioned on each open edge so two grouped cards meeting side-by-side form a full diamond at the seam.
 
 8. **Card design system**:
-   - Top band (9mm, `dark_color` bg) always present, always contains: `§N` section label + FA type icon in `accent_color`
-   - Border: 2pt solid `accent_color` around entire card; tag removes one or two sides to group cards visually
-   - `definition-lexicon` is the exception: left spine instead of top band (rotated icon + section label)
-   - FA icons by type: default=fa-lightbulb, section=fa-bookmark, question=fa-circle-question, long_quote=fa-quote-left, definition=fa-book, enumeration=fa-list-ol, diagram=fa-diagram-project, example=fa-flask, axis=fa-sliders
+ - 9pt solid `main_color` border around the entire card — this is the dominant section identity marker. Sections must use saturated, high-contrast colors (see `big_prompt.py`).
+ - Top-right: type icon (FontAwesome) in `#111` text color.
+ - Bottom-right: `§N` section number in `#111` text color, set in the title font. Displayed 1-indexed (`section + 1`) — schema `section` field is 0-indexed.
+ - `definition-lexicon` is the exception: left 9mm spine in `main_color` instead of corner icon. The section label sits in the same bottom-right corner as other cards.
+ - `book-card-cover` is the exception: pure black border (5pt), no section colors — the book card belongs to no section.
+ - FA icons by type: default=fa-lightbulb, section=fa-bookmark, question=fa-circle-question, long_quote=fa-quote-left, definition=fa-book, enumeration=fa-list-ol, diagram=fa-diagram-project, example=fa-flask, axis=fa-sliders
 
 9. **Register template**:
    - The schema's `templates: ClassVar[str]` uses a glob pattern to match templates automatically

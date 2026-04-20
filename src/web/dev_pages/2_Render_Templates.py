@@ -50,11 +50,11 @@ def visual_identity_selector(key_prefix: str = "") -> dict:
         st.write("**Section theme colors:**")
         color_cols = st.columns(3)
         with color_cols[0]:
-            main_color = st.color_picker("Main color", "#1a1a1a", key=f"{key_prefix}main")
+            main_color = st.color_picker("Main color", "#8B1E3F", key=f"{key_prefix}main")
         with color_cols[1]:
-            dark_color = st.color_picker("Dark color", "#000000", key=f"{key_prefix}dark")
+            dark_color = st.color_picker("Dark color", "#1a1a1a", key=f"{key_prefix}dark")
         with color_cols[2]:
-            accent_color = st.color_picker("Accent color", "#FF6B6B", key=f"{key_prefix}accent")
+            accent_color = st.color_picker("Accent color", "#C97B45", key=f"{key_prefix}accent")
 
         vi_obj = VisualIdentity(
             description=description,

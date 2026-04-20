@@ -24,7 +24,7 @@
 
     /* LEFT spine — type icon only; spine color is the section identity */
     .left-spine {
-      flex: 0 0 9mm;
+      flex: 0 0 5mm;
       background: {{ theme.main_color }};
       display: flex;
       flex-direction: column;
@@ -32,7 +32,7 @@
       justify-content: center;
     }
     .spine-icon {
-      font-size: 13pt;
+      font-size: 9pt;
       color: rgba(255,255,255,0.9);
     }
 
@@ -112,6 +112,7 @@
     <div class="left-spine">
       <i class="fa-solid fa-book spine-icon"></i>
     </div>
+    <div class="card-section-label">§{{ section + 1 }}</div>
 
     <div class="main">
       <div class="word">{{ word }}</div>
