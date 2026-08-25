@@ -34,5 +34,6 @@ RUNWARE_MODEL = "runware:101@1"
 # Google Gemini diagram generation model
 GEMINI_DIAGRAM_MODEL = "gemini-2.5-flash-image"
 
-# Cerebras LLM for quality control reviews
-QUALITY_CONTROL_MODEL = "zai-glm-4.7"
+# Cerebras LLM for quality control reviews.
+# NB: zai-glm-4.7 was archived by Cerebras and 404s — do not restore it.
+QUALITY_CONTROL_MODEL = "gpt-oss-120b"

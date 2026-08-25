@@ -215,7 +215,7 @@ def run_streamlit() -> None:
     st.set_page_config(page_title="Card Generator", layout="wide")
     st.title("Card Generator")
     st.caption(
-        "Build the full agent prompt → single Cerebras call (zai-glm-4.7) → "
+        "Build the full agent prompt → single Cerebras call (gpt-oss-120b) → "
         "parse BBGame JSON → generate images via Runware"
     )
 
@@ -295,7 +295,7 @@ def run_streamlit() -> None:
         st.text_area("Prompt", full_prompt, height=400, disabled=True, label_visibility="collapsed")
 
     # ---- Step 3: Cerebras call ----
-    st.subheader("Step 3 — Generate with Cerebras `zai-glm-4.7`")
+    st.subheader("Step 3 — Generate with Cerebras `gpt-oss-120b`")
 
     api_key = os.environ.get("CEREBRAS_API_KEY", "")
     if not api_key:
@@ -313,7 +313,7 @@ def run_streamlit() -> None:
         with st.spinner("Calling Cerebras — this may take a few minutes for long books…"):
             try:
                 stream = client.chat.completions.create(
-                    model="zai-glm-4.7",
+                    model="gpt-oss-120b",
                     messages=[
                         {"role": "system", "content": full_prompt},
                         {"role": "user", "content": "Generate the card deck now."},
