@@ -33,8 +33,15 @@ make test                 # pytest tests/
 load_book(epub)           →  HTML            (cached to OUT/book.html)
 run_agent(...)            →  TMP/cards.json  (BBGame JSON, session_id to OUT/session_id.txt)
 cards_json_to_pdfs(...)   →  TMP/renders/*.pdf (images on-demand → OUT/images/, fonts cached to data/fonts/)
-merge_pdfs_to_print(...)  →  output_dir/deck.pdf
+merge_pdfs_to_print(...)  →  output_dir/deck_{book-title-slug}.pdf
 ```
+
+The final PDF is named `deck_{book-title-slug}.pdf`, where the slug comes from the
+`book_card`'s `title` via `deck_filename_from_json()` in `src/lib/utils.py`. Decks with no
+book card (or an unreadable cards.json) fall back to `deck.pdf` — the helper never raises,
+since a filename is not worth failing a finished render over. In the Generator UI the
+on-disk snapshots keep their `deck-vNNN.pdf` names (the version selector parses them);
+only the downloaded file carries the book-title name.
 
 Output layout per run: `output/{timestamp}_{random}_{slug}/` with `tmp/` (agent scratch) and `out/` (persistent: versioned snapshots, QC reports, session_id, logs, image cache). Fonts cached globally in `data/fonts/`.
 

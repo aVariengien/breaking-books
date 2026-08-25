@@ -13,6 +13,7 @@ from agent import run_agent
 from lib import log
 from lib.models import Config, OutDir, WorkDir
 from tools.extract_book_content import load_book
+from lib.utils import deck_filename_from_json
 from tools.merge_pdfs import merge_pdfs_to_print
 from tools.render_template import cards_json_to_pdfs
 
@@ -46,7 +47,7 @@ def main(
     1. load_book(input_path)       →  book text  (EPUB, HTML, or Markdown)
     2. run_agent(…)                →  TMP/cards.json
     3. cards_json_to_pdfs(…)       →  TMP/renders/*.pdf (images generated on-demand)
-    4. merge_pdfs_to_print(…)      →  output_dir/deck.pdf
+    4. merge_pdfs_to_print(…)      →  output_dir/deck_{book-title-slug}.pdf
     """
     if resume and output_dir is None:
         raise typer.BadParameter("--output-dir is required when using --resume")
@@ -89,9 +90,10 @@ def main(
 
     # --- Step 4: merge into a printable sheet ---
     logger.info("Merging PDFs…")
-    merge_pdfs_to_print(pdf_paths, output_dir / "deck.pdf", card_size=config.card_size)
+    deck_path = output_dir / deck_filename_from_json(work_dir.cards_json)
+    merge_pdfs_to_print(pdf_paths, deck_path, card_size=config.card_size)
 
-    typer.echo(f"Done! Output: {output_dir / 'deck.pdf'}")
+    typer.echo(f"Done! Output: {deck_path}")
 
 
 async def _run_agent(

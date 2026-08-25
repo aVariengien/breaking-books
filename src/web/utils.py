@@ -12,6 +12,7 @@ import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
 
 from lib.constants import IMAGE_CACHE_DIR, RUNWARE_MODEL
+from lib.utils import deck_filename_from_json
 from tools.merge_pdfs import merge_pdfs_to_print
 from tools.pdf_to_pngs import pdf_to_pngs
 from tools.render_template import cards_json_to_pdfs
@@ -323,7 +324,10 @@ def deck_viewer(
             )
         )
 
-    _download_row_and_viewer(selected_path.read_bytes(), selected_path.name, secondary, key_prefix)
+    # On-disk snapshots keep their deck-vNNN.pdf names (the version selector parses
+    # them); the file the user actually downloads is named after the book.
+    download_name = deck_filename_from_json(cards_json_path)
+    _download_row_and_viewer(selected_path.read_bytes(), download_name, secondary, key_prefix)
 
 
 def make_card_images_zip(card_pdfs: list[Path], *, dpi: int = 150) -> bytes:
@@ -423,7 +427,7 @@ def _do_render(
     st.divider()
     _download_row_and_viewer(
         merged_pdf_bytes,
-        "deck.pdf",
+        deck_filename_from_json(cards_json_bytes),
         [("⬇ PNGs (ZIP)", _build_zip(card_png_pairs), "deck_cards.zip", "application/zip")],
         key_prefix,
     )
