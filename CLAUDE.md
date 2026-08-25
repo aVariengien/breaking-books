@@ -244,8 +244,14 @@ Notes:
   creates the mount points, so the local 200MB EPUB library in `data/` never enters the build.
 - Caddy is the active reverse proxy (nginx is installed but inactive). It gets TLS certs
   automatically; the DNS A/AAAA records already point at mimosa.
-- The reverse_proxy uses 30m read/write timeouts — the agent can go minutes between
-  websocket frames on a long book, and a shorter timeout drops the UI mid-run.
+- The reverse_proxy deliberately sets **no** transport timeouts. Caddy's default is
+  no read/write timeout, which is what long agent runs need — adding one would only
+  cut runs short.
+- Streamlit's websocket (`/_stcore/stream`) proxies through Caddy as-is. Testing it
+  with `curl` returns 400 unless you pass `--http1.1`: Caddy serves HTTP/2, where the
+  `Connection: Upgrade` header is illegal. Browsers always do the `wss://` handshake
+  over HTTP/1.1, so that 400 is a curl artifact, not a broken proxy. Streamlit itself
+  returns 403 (not 400) when it rejects an Origin.
 - Logs: `ssh mimosa 'docker logs -f breaking-books'`.
 
 ### Other notes

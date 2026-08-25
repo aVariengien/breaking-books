@@ -1,15 +1,13 @@
 
 breaking-books.alexandrevariengien.com {
 	encode zstd gzip
-	# Streamlit uploads whole EPUBs and streams the agent log over a websocket.
+	# Cap uploads; Streamlit enforces its own 200MB limit on top of this.
 	request_body {
 		max_size 200MB
 	}
-	reverse_proxy 127.0.0.1:9201 {
-		# The agent can think for minutes between websocket frames.
-		transport http {
-			read_timeout 30m
-			write_timeout 30m
-		}
-	}
+	# No transport timeouts here on purpose: Caddy defaults to no read/write
+	# timeout, which is what long agent runs need. Setting one would only cut
+	# runs short. Streamlit's websocket (/_stcore/stream) proxies fine as-is —
+	# browsers do the wss:// handshake over HTTP/1.1.
+	reverse_proxy 127.0.0.1:9201
 }
