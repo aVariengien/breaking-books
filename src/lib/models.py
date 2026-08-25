@@ -41,9 +41,9 @@ class Config(BaseModel):
     language: str | None = None  # None → detect from book
     max_qc_calls: int = 3
     user_preferences: str = ""
-    # Any LiteLLM model string, e.g. "gemini/gemini-3.1-flash-lite-preview",
-    # "anthropic/claude-3-5-sonnet-20241022", "openai/gpt-4o".
-    model: str = "gemini/gemini-3.1-flash-lite-preview"
+    # Any LiteLLM model string, e.g. "gemini/gemini-3.7-flash",
+    # "anthropic/claude-sonnet-5", "openai/gpt-4o".
+    model: str = "gemini/gemini-3.7-flash"
 
 
 class WorkDir(BaseModel):

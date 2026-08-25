@@ -24,11 +24,11 @@ from web.utils import deck_viewer, render_agent_log, render_message, update_stat
 # Constants
 # ------------------------------------------------------------------
 
-_FREE_MODELS = ["gemini/gemini-3.1-flash-lite-preview"]
+_FREE_MODELS = ["gemini/gemini-3.7-flash"]
 _ADMIN_MODELS = [
-    "gemini/gemini-3.1-flash-lite-preview",
+    "gemini/gemini-3.7-flash",
     "gemini/gemini-3.1-pro-preview",
-    "anthropic/claude-sonnet-4-6",
+    "anthropic/claude-sonnet-5",
 ]
 
 _HOW_TO_PLAY = """

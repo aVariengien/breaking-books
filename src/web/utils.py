@@ -24,9 +24,12 @@ from tools.render_template import cards_json_to_pdfs
 # Prices in USD per 1M tokens (cached_input, non_cached_input, output).
 # Thinking tokens are billed at the output rate.
 # Pro prices use the <=200k-token tier; >200k tier is $4.00/$18.00/$0.40 respectively.
-# Sources: Google AI Studio pricing page, Mar 2026.
+# Sources: Google AI Studio + Anthropic pricing pages, Aug 2026.
 _MODEL_PRICING: dict[str, tuple[float, float, float]] = {
     #                                  cached   non-cached  output
+    # Gemini 3.7 Flash — introductory rates, in effect through 2026-12-31.
+    # From 2027-01-01 these double to (0.15, 1.50, 7.50).
+    "gemini-3.7-flash":                (0.075,   0.75,      3.75),
     "gemini-3.1-flash-lite-preview":   (0.025,   0.25,      1.50),
     "gemini-3.1-pro-preview":          (0.20,    2.00,     12.00),
     "gemini-3.1-pro-preview-customtools": (0.20, 2.00,     12.00),
@@ -35,6 +38,7 @@ _MODEL_PRICING: dict[str, tuple[float, float, float]] = {
     "gemini-2.0-flash":                (0.025,   0.10,      0.40),
     "gemini-2.0-flash-lite":           (0.01875, 0.075,     0.30),
     # Anthropic — cache hits price used as cached_input rate
+    "claude-sonnet-5":                 (0.30,    3.00,     15.00),
     "claude-sonnet-4-6":               (0.30,    3.00,     15.00),
 }
 
@@ -46,7 +50,7 @@ def _estimate_cost(
     output_tokens: int,
 ) -> float | None:
     """Return estimated cost in USD, or None if the model is not in the pricing table."""
-    # Strip provider prefix (e.g. "gemini/gemini-3.1-flash-lite-preview" → "gemini-3.1-flash-lite-preview")
+    # Strip provider prefix (e.g. "gemini/gemini-3.7-flash" → "gemini-3.7-flash")
     key = model.split("/")[-1]
     pricing = _MODEL_PRICING.get(key)
     if pricing is None:

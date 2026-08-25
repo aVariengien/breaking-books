@@ -1,0 +1,30 @@
+.git/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Secrets — mounted at runtime, never baked into the image
+.env
+.env.*
+.streamlit/
+
+# Generated output — mounted as a volume
+output/
+
+# Dev/test files
+tests/
+v1/
+books/
+test_sections/
+*.epub
+*.pdf
+*.png
+*.jpg
+*.jpeg
+
+# Misc
+.DS_Store
+notes.md
+visualize.py

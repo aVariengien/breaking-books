@@ -14,6 +14,11 @@ cache/
 .env
 .env.*
 !.env.example
+.streamlit/secrets.toml
+
+# Runtime output
+output/
+.DS_Store
 
 # Large files
 *.epub

@@ -1,0 +1,30 @@
+# Breaking Books on mimosa.
+#
+# The container listens on 127.0.0.1:9201 only — Caddy terminates TLS for
+# breaking-books.alexandrevariengien.com and reverse-proxies to it.
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: breaking-books:latest
+    container_name: breaking-books
+    restart: unless-stopped
+    ports:
+      # Bound to loopback: never reachable from the internet except via Caddy.
+      - "127.0.0.1:9201:9201"
+    env_file:
+      - /opt/breaking-books/secrets.env
+    volumes:
+      # Generated decks (PDFs, card JSON, agent logs) — persisted across rebuilds.
+      - /opt/breaking-books/output:/app/output
+      # Runtime caches: Google Fonts + generated card images. Persisting these
+      # across rebuilds avoids re-downloading fonts and re-paying for images.
+      - /opt/breaking-books/data:/app/data
+      # Admin password for the model selector. Read-only, never in the image.
+      - /opt/breaking-books/secrets.toml:/app/.streamlit/secrets.toml:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

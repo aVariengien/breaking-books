@@ -1,0 +1,15 @@
+
+breaking-books.alexandrevariengien.com {
+	encode zstd gzip
+	# Streamlit uploads whole EPUBs and streams the agent log over a websocket.
+	request_body {
+		max_size 200MB
+	}
+	reverse_proxy 127.0.0.1:9201 {
+		# The agent can think for minutes between websocket frames.
+		transport http {
+			read_timeout 30m
+			write_timeout 30m
+		}
+	}
+}

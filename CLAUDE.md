@@ -40,12 +40,25 @@ Output layout per run: `output/{timestamp}_{random}_{slug}/` with `tmp/` (agent 
 
 ### Agent (`src/agent.py`)
 
-Uses **claude-agent-sdk** (`ClaudeSDKClient`). The agent receives a system prompt (built by `src/big_prompt.py`) with role + card-writing guidelines, the full Google Fonts index, and config. The initial user message contains the card schemas (from `build_schema_docs()`) and the full book HTML in a `<book>` tag.
+Uses **Google ADK** (`LlmAgent` + `Runner`). The agent receives a system prompt (built by `src/big_prompt.py`) with role + card-writing guidelines, the full Google Fonts index, and config. The initial user message contains the card schemas (from `build_schema_docs()`) and the full book HTML in a `<book>` tag.
 
-- Allowed tools: `Read`, `Write`, `Edit`, `Glob`, `mcp__bb__quality_control`
-- `permission_mode="acceptEdits"`, `cwd=work_dir.root`, model: `haiku`
-- The agent writes `cards.json` directly using file tools, then calls `quality_control()` as an MCP tool
-- Resume: session_id stored in `OUT/session_id.txt`, passed as `ClaudeAgentOptions(resume=session_id)`
+- Tools (plain Python functions, all scoped to `work_dir.root`): `read_file`, `write_file`, `edit_file`, `grep_files`, `quality_control`
+- The agent writes `cards.json` with the file tools, then calls `quality_control()` to review and iterate
+- `run_agent()` is an async generator yielding ADK `Event`s; the Streamlit UI renders them live
+- Resume: session_id stored in `OUT/session_id.txt` and replayed into an `InMemorySessionService`
+
+**Model resolution** (`_resolve_model`): `gemini/*` strings drop the prefix and use ADK's native
+Gemini integration (which also enables `BuiltInPlanner` thinking at `MEDIUM`); every other string
+is wrapped in `LiteLlm(...)` and skips the planner for compatibility.
+
+| Where | Default |
+|---|---|
+| `Config.model` (`src/lib/models.py`), `main.py --model` | `gemini/gemini-3.7-flash` |
+| UI, no admin (`_FREE_MODELS`) | `gemini/gemini-3.7-flash` |
+| UI, admin unlocked (`_ADMIN_MODELS`) | + `gemini/gemini-3.1-pro-preview`, `anthropic/claude-sonnet-5` |
+
+Admin is gated by `st.secrets["admin_password"]` (`.streamlit/secrets.toml`, gitignored). Add any
+new model to `_MODEL_PRICING` in `src/web/utils.py` or its runs show no cost estimate.
 
 ### Agent prompt structure (`src/big_prompt.py`)
 
@@ -200,6 +213,40 @@ src/web/
 
 When adding new pages, update the `st.navigation()` call in `src/web/app.py`.
 
+
+## Deployment
+
+Production runs at **https://breaking-books.alexandrevariengien.com** on the `mimosa` server
+(`ssh mimosa`), as a Docker container behind Caddy. Deployed from the **`v2`** branch.
+
+```
+/opt/breaking-books-src/     git checkout of this repo (branch v2)
+/opt/breaking-books/
+├── secrets.env              API keys → container env (0600, root-only, never in git)
+├── secrets.toml             Streamlit admin_password → /app/.streamlit/secrets.toml (ro)
+├── output/                  generated decks, persisted across rebuilds
+└── data/                    font + image caches, persisted across rebuilds
+```
+
+Deploy files live in `deploy/`:
+- `docker-compose.yml` — binds the container to `127.0.0.1:9201` (never public directly)
+- `install.sh` — idempotent: creates dirs/secret templates, builds, starts, adds the Caddy vhost
+- `Caddyfile.snippet` — appended to `/etc/caddy/Caddyfile` on first install
+
+**To redeploy after pushing to `v2`:**
+
+```bash
+ssh mimosa 'cd /opt/breaking-books-src && git pull && ./deploy/install.sh'
+```
+
+Notes:
+- `data/` and `output/` are bind mounts, **not** baked into the image — the Dockerfile only
+  creates the mount points, so the local 200MB EPUB library in `data/` never enters the build.
+- Caddy is the active reverse proxy (nginx is installed but inactive). It gets TLS certs
+  automatically; the DNS A/AAAA records already point at mimosa.
+- The reverse_proxy uses 30m read/write timeouts — the agent can go minutes between
+  websocket frames on a long book, and a shorter timeout drops the UI mid-run.
+- Logs: `ssh mimosa 'docker logs -f breaking-books'`.
 
 ### Other notes
 - Always run `make check` before considering your work complete.
